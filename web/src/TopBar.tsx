@@ -1,0 +1,43 @@
+import type { Snapshot } from "../../core/types.ts";
+import { type Route, RouteLink } from "./router.tsx";
+import { OptionsMenu } from "./OptionsMenu.tsx";
+import { BellIcon, hhmm } from "./ui.tsx";
+
+export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | null; connected: boolean; route: Route }) {
+  const unread = snapshot?.events.filter((e) => e.isNew).length ?? 0;
+  const rl = snapshot?.rateLimit;
+  return (
+    <header className="topbar">
+      <div className="topbar-inner">
+        <RouteLink to="dashboard" className="brand">
+          <span className="logo" aria-hidden />
+          PR Dashboard
+        </RouteLink>
+        {snapshot && <span className="repo">{snapshot.repo}</span>}
+
+        <div className="topbar-right">
+          <span className="status" title={snapshot?.lastError ?? (connected ? "Live updates connected" : "Disconnected from server")}>
+            <span className={`dot ${!connected || snapshot?.lastError ? "bad" : "ok"}`} />
+            {!connected ? "offline" : snapshot?.lastPollAt ? `polled ${hhmm(snapshot.lastPollAt)}` : "connecting"}
+          </span>
+          {rl && (
+            <span className="status" title="GitHub REST API requests left this hour (shared with gh and other tools using your token)">
+              API {rl.remaining.toLocaleString()}/{rl.limit.toLocaleString()} · resets {hhmm(rl.resetAt)}
+            </span>
+          )}
+          {snapshot?.login && <span className="login">@{snapshot.login}</span>}
+          {snapshot && <OptionsMenu prefs={snapshot.prefs} login={snapshot.login} />}
+          <RouteLink
+            to="notifications"
+            className={`bell ${route === "notifications" ? "active" : ""}`}
+            aria-label={unread ? `Notifications, ${unread} new` : "Notifications"}
+            title="Notifications"
+          >
+            <BellIcon />
+            {unread > 0 && <span className="bell-count">{unread > 99 ? "99+" : unread}</span>}
+          </RouteLink>
+        </div>
+      </div>
+    </header>
+  );
+}
