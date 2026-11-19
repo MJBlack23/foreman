@@ -9,6 +9,8 @@ export function pr(over: Partial<GhPr> = {}): GhPr {
   return {
     number: 7475,
     author: "me",
+    tickets: [],
+    ticketHints: [],
     title: "Tidy gateway auth",
     htmlUrl: "https://github.com/CloudSpot/cloudspot/pull/7475",
     headRef: "claude/gifted-babbage-lr6mq4",

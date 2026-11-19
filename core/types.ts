@@ -19,9 +19,20 @@ export interface Prefs {
   authors: AuthorKey[];
 }
 
+export interface Ticket {
+  /** e.g. PLAT-2031 */
+  id: string;
+  title: string | null;
+  url: string;
+}
+
 export interface GhPr {
   number: number;
   author: AuthorKey;
+  /** Linear tickets attached to the PR (Linear's linkback comment or a linear.app link). */
+  tickets: Ticket[];
+  /** Ticket-shaped IDs in the title or branch, used when nothing is attached yet. */
+  ticketHints: string[];
   title: string;
   htmlUrl: string;
   headRef: string;
@@ -205,7 +216,7 @@ export interface EventView extends WatchEvent {
  * Bump when the Snapshot shape changes. The page compares it with the server's
  * so a server started from older code shows a "restart" message, not a crash.
  */
-export const SNAPSHOT_SCHEMA = 6;
+export const SNAPSHOT_SCHEMA = 7;
 
 export interface Snapshot {
   schema: number;

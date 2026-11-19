@@ -138,6 +138,16 @@ code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: va
 .checks.bad { color: var(--red); font-weight: 600; }
 .checks.wait { color: var(--amber); }
 
+/* Search */
+.search { position: relative; display: flex; align-items: center; margin-bottom: 10px; }
+.search svg { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
+.search input { font: inherit; font-size: 14px; width: 100%; padding: 9px 70px 9px 36px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.search input::placeholder { color: var(--muted); }
+.search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.search input::-webkit-search-cancel-button { cursor: pointer; }
+.search-meta { position: absolute; right: 12px; font-size: 12px; color: var(--muted); pointer-events: none; }
+kbd.search-meta { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+
 /* PR list */
 .tabs, .filters { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; flex-wrap: wrap; }
 .tabs button, .filters button { font: inherit; font-weight: 500; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 7px 12px; margin-bottom: -1px; cursor: pointer; }
@@ -219,6 +229,9 @@ code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: va
 .pill.open { background: var(--green-bg); color: var(--green); }
 .pill.draft { background: var(--grey-bg); color: var(--muted); }
 .pill.bot { background: var(--claude-bg); color: var(--claude); }
+.ticket { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; background: var(--purple-bg); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); font-variant-numeric: tabular-nums; }
+a.ticket:hover { text-decoration: none; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.ticket.none { background: var(--red-bg); color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
 .pill.waiting, .pill.building { background: var(--blue-bg); color: var(--blue); }
 .pill.failing, .pill.failed, .pill.ev-failed { background: var(--red-bg); color: var(--red); }
 .pill.complete, .pill.ev-complete { background: var(--green-bg); color: var(--green); }

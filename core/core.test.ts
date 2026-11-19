@@ -4,6 +4,7 @@ import { buildEvents } from "./events.ts";
 import { T0, iso, job, min, pr, run, step } from "./fixtures.ts";
 import { matchRunToPr } from "./match.ts";
 import { mergeStats, niceMax, rollingAverage } from "./stats.ts";
+import { attachedTickets, matchesQuery, parseLinkback, resolveTickets, ticketHints } from "./tickets.ts";
 import { extractSummary, formatAgo, reviewSummary, riskLevel, riskTone, splitLabels } from "./pr.ts";
 import { diffUnseen, planNotifications, pruneSeen } from "./seen.ts";
 import { findFailedJob, prStatus } from "./status.ts";
@@ -440,5 +441,80 @@ describe("authors", () => {
   it("skips actor-only runs when login is null (my PRs turned off)", () => {
     const out = buildMyRuns([run({ ...long, headBranch: "x", actor: "me" })], [], null).runs;
     expect(out).toEqual([]);
+  });
+});
+
+describe("Linear tickets", () => {
+  const linkback = (id: string, title: string, extra = "") =>
+    `<!-- linear-linkback -->\n<details>\n<summary><a href="https://linear.app/cloudspot/issue/${id}/slug">${id} ${title}</a></summary>\n<p>\n\n${extra}`;
+
+  it("reads the ticket from the linkback summary, not the quoted description", () => {
+    const body = linkback("PLAT-1234", "Convert crm-backend", "Pilot ([PLAT-1233](<https://linear.app/cloudspot/issue/PLAT-1233>))");
+    expect(parseLinkback(body)).toEqual({
+      id: "PLAT-1234",
+      title: "Convert crm-backend",
+      url: "https://linear.app/cloudspot/issue/PLAT-1234/slug",
+    });
+    expect(parseLinkback("LGTM")).toBeNull();
+  });
+
+  it("decodes HTML entities in the title", () => {
+    expect(parseLinkback(linkback("PLAT-1", "Add `&lt;Foo&gt;` &amp; bar"))?.title).toBe("Add `<Foo>` & bar");
+  });
+
+  it("uses linkbacks when present, ignoring related tickets linked in the description", () => {
+    const out = attachedTickets(
+      [linkback("PLAT-2", "Two"), "risk gate comment"],
+      "See https://linear.app/cloudspot/issue/PLAT-2 and https://linear.app/cloudspot/issue/SUP-9/x",
+    );
+    expect(out.map((t) => t.id)).toEqual(["PLAT-2"]);
+  });
+
+  it("falls back to description links, deduplicated, when there is no linkback", () => {
+    const out = attachedTickets(["LGTM"], "https://linear.app/cloudspot/issue/SUP-9/x and https://linear.app/cloudspot/issue/SUP-9");
+    expect(out.map((t) => t.id)).toEqual(["SUP-9"]);
+  });
+
+  it("finds ticket-shaped IDs in titles and branches", () => {
+    expect(ticketHints("fix: thing (PLAT-2031)", "claude/plat-2055-update-row")).toEqual(["PLAT-2031", "PLAT-2055"]);
+  });
+
+  it("falls back to hints only for team keys seen on real Linear links", () => {
+    const linked = pr({ number: 1, tickets: [{ id: "PLAT-1", title: "x", url: "https://linear.app/cloudspot/issue/PLAT-1/x" }] });
+    const pending = pr({ number: 2, ticketHints: ["PLAT-2055"] });
+    const rfc = pr({ number: 3, ticketHints: ["RFC-0001"] });
+    const [, a, b] = resolveTickets([linked, pending, rfc]);
+    expect(a?.tickets).toEqual([{ id: "PLAT-2055", title: null, url: "https://linear.app/cloudspot/issue/PLAT-2055" }]);
+    expect(b?.tickets).toEqual([]);
+  });
+});
+
+describe("search", () => {
+  const p = pr({
+    number: 7507,
+    title: "refactor(sso): remove the GET /settings route",
+    tickets: [{ id: "PLAT-2031", title: null, url: "u" }],
+  });
+
+  it("matches title words, any order, case-insensitive", () => {
+    expect(matchesQuery(p, "SSO settings")).toBe(true);
+    expect(matchesQuery(p, "settings billing")).toBe(false);
+  });
+
+  it("matches PR numbers with or without #", () => {
+    expect(matchesQuery(p, "7507")).toBe(true);
+    expect(matchesQuery(p, "#75")).toBe(true);
+    expect(matchesQuery(p, "#7508")).toBe(false);
+  });
+
+  it("matches ticket IDs in full, lowercase, or by number", () => {
+    expect(matchesQuery(p, "PLAT-2031")).toBe(true);
+    expect(matchesQuery(p, "plat-20")).toBe(true);
+    expect(matchesQuery(p, "2031")).toBe(true);
+    expect(matchesQuery(p, "SUP-2031")).toBe(false);
+  });
+
+  it("matches everything for an empty query", () => {
+    expect(matchesQuery(p, "  ")).toBe(true);
   });
 });

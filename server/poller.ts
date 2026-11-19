@@ -3,6 +3,7 @@ import { typicalDurationMs } from "../core/eta.ts";
 import { isRunActive, matchRunToPr } from "../core/match.ts";
 import { diffUnseen, planNotifications, type PlannedNotification } from "../core/seen.ts";
 import { AUTHOR_KEYS, type AuthorKey, type GhJob, type GhPr, type GhRun, type JobsPayload, SNAPSHOT_SCHEMA, type Snapshot } from "../core/types.ts";
+import { resolveTickets } from "../core/tickets.ts";
 import { buildMyRuns, buildPrViews, isDeployRun, myBranchRuns, pickFeatured } from "../core/view.ts";
 import { LIVE_JOBS_MIN_AGE_MS, PRS_EVERY_MS, REPO_NAME, REPO_OWNER, RUNS_EVERY_MS, STATS_DAYS, STATS_EVERY_MS } from "./config.ts";
 import type { GitHub } from "./github.ts";
@@ -110,7 +111,7 @@ export class Poller {
     const lists = await Promise.all(
       AUTHOR_KEYS.flatMap((a) => [this.gh.searchPrs(a, "is:open"), this.gh.searchPrs(a, `is:closed closed:>=${since}`)]),
     );
-    this.prs = new Map(lists.flat().map((p) => [p.number, p]));
+    this.prs = new Map(resolveTickets(lists.flat()).map((p) => [p.number, p]));
   }
 
   /** Jobs only for runs matched to my PRs: active ones, and finished ones once. */

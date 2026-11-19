@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { Octokit } from "@octokit/rest";
 import { extractSummary } from "../core/pr.ts";
+import { attachedTickets, ticketHints } from "../core/tickets.ts";
 import type { AuthorKey, GhJob, GhPr, GhRun } from "../core/types.ts";
 import { REPO_NAME, REPO_OWNER, WORKFLOW_FILE } from "./config.ts";
 
@@ -150,6 +151,7 @@ const PR_QUERY = /* GraphQL */ `
           comments { totalCount }
           labels(first: 30) { nodes { name } }
           reviewDecision
+          comments_first: comments(first: 2) { nodes { author { login } body } }
           latestOpinionatedReviews(first: 20) { nodes { state author { login } } }
           reviewRequests(first: 20) {
             nodes { requestedReviewer { ... on User { login } ... on Team { name } ... on Bot { login } } }
@@ -196,6 +198,7 @@ interface GqlPr {
   comments: { totalCount: number };
   labels: { nodes: { name: string }[] };
   reviewDecision: GhPr["reviewDecision"];
+  comments_first: { nodes: { author: { login: string } | null; body: string }[] };
   latestOpinionatedReviews: { nodes: { state: string; author: { login: string } | null }[] };
   reviewRequests: { nodes: { requestedReviewer: { login?: string; name?: string } | null }[] };
   commits: { nodes: { commit: { statusCheckRollup: { state: GhPr["checks"] } | null } }[] };
@@ -205,6 +208,12 @@ function toPr(n: GqlPr, author: AuthorKey): GhPr {
   return {
     number: n.number,
     author,
+    // Linear's GitHub integration posts a linkback comment, first or second on the PR.
+    tickets: attachedTickets(
+      n.comments_first.nodes.filter((c) => /linear/i.test(c.author?.login ?? "")).map((c) => c.body),
+      n.body,
+    ),
+    ticketHints: ticketHints(n.title, n.headRefName),
     title: n.title,
     htmlUrl: n.url,
     headRef: n.headRefName,
