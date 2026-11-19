@@ -93,7 +93,13 @@ The role covers every app in project `default`, which includes `argocd`, `loki` 
 
 **P2. Cloudflare Access service token.** Create a service token, and add a Service Auth policy for it to the Access application in front of each Argo host. If the two hosts are separate Access applications, the token must be allowed on both. You may also choose to issue one token per host.
 
-**P3. Local secrets file.** Create `~/Library/Application Support/merge-watch/argo.env` with mode `0600`:
+**P3. Secrets in Doppler.** The secrets live in the Doppler project `matt-pr-dashboard`, config `prd`. They are injected into the server's environment at launch, so no secret is written to a file on disk:
+
+```bash
+doppler run --project matt-pr-dashboard --config prd -- npm start
+```
+
+The variables are:
 
 ```bash
 ARGO_PRD_URL=https://argo.internal.cloudspot.io
@@ -105,7 +111,18 @@ CF_ACCESS_CLIENT_SECRET=...
 # optional per-env overrides: CF_ACCESS_PRD_CLIENT_ID, CF_ACCESS_STG_CLIENT_SECRET, …
 ```
 
-Variables set in the process environment override the file, following the pattern in `server/config.ts`. If an environment is missing its URL or token, its tab says "not configured" and names the missing variable. The rest of the dashboard keeps working.
+Status: the prod values are set. The staging values are not filled in yet, because staging access isn't available for now. The `prd` config holds both clusters' variables; Doppler's `stg` config is unused.
+
+If an environment's URL or token is missing or empty, its tab says "not configured" and names the missing variable. The rest of the dashboard keeps working. An empty string counts as missing, so a blank `ARGO_STG_TOKEN` gives the "not configured" state, not a failed request.
+
+As a fallback for running without Doppler, the server also reads `~/Library/Application Support/merge-watch/argo.env` (mode `0600`, same variables). Variables in the process environment override the file, following the pattern in `server/config.ts`. The server never logs these values or sends them to the browser.
+
+**Keeping secrets away from agents.** A logged-in Doppler CLI hands out secrets without a prompt, so any agent running as you could read them. Two things reduce that risk:
+
+- Add deny rules to `~/.claude/settings.json` for `Bash(doppler secrets:*)`, `Bash(doppler run:*)` and `Read(~/Library/Application Support/merge-watch/argo.env)`, and turn on the Claude Code sandbox so the read rule is enforced for shell commands too.
+- Generate Argo tokens with an expiry, for example `--expires-in 30d`, and rotate them.
+
+An agent can also call the local write endpoints without knowing any token. The guard against that is in "Write safety".
 
 ## Design
 
@@ -215,6 +232,7 @@ export interface DiffEntry { kind: string; name: string; status: "OutOfSync" | "
   - Prod: the dialog shows the deployment name, its replica count, and the pods that will be replaced. Confirm sends `{ confirm: "<app>" }`, and the server checks that the name matches.
   - Staging: one click.
 - **Style.** The Staging tab and every staging dialog use a distinct accent color, and the words "STAGING" in the header. Prod dialogs say "PRODUCTION" in red.
+- **Local callers (proposed, not decided).** The Origin check stops web pages, not local processes. An agent could `curl` the preview endpoint and then the sync endpoint without ever seeing a token. The proposed guard: for prod writes, the server shows a native macOS confirmation itself (for example `osascript` `display dialog`, or a Touch ID prompt) before it calls Argo, so approval happens outside the browser and outside any agent. Until that exists, a Claude Code deny rule on `Bash(curl:*localhost:7896/api/cluster*)` helps, but it is easy to get around.
 - **Audit log.** The server writes one line per write to `<dataDir>/cluster-actions.log`: time, environment, app, action, Argo response status. Tokens are never written.
 
 ### Log filter
@@ -260,7 +278,7 @@ Each step is one PR, and each step works without the ones after it.
 
 | # | Step | Needs | Notes |
 |---|---|---|---|
-| 0 | P1, P2, P3 (manual) | — | A readonly token is enough to start steps 1 to 4. |
+| 0 | P1, P2, P3 (manual) | — | A readonly token is enough to start steps 1 to 4. Prod secrets are in Doppler; staging is pending. |
 | 1 | Config loading, `ArgoClient`, the `/api/cluster/config` route, the router entry, a Cluster link, and an empty page with tabs. Includes the Origin guard (N1). | — | `server/config.ts`, `server/argo.ts`, `web/src/router.tsx`, `TopBar.tsx` |
 | 2 | App list: the watcher, the `events` SSE route, `AppList`, and `isShownApp`. | 1 | R1, R2, R3 |
 | 3 | Pods view: the tree SSE route, `AppDetail`, `parseImage`, and resolving SHA to PR. | 2 | R5 |
