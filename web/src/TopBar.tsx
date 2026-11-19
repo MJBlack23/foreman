@@ -1,11 +1,11 @@
 import type { Snapshot } from "../../core/types.ts";
 import { type Route, RouteLink } from "./router.tsx";
 import { OptionsMenu } from "./OptionsMenu.tsx";
-import { BellIcon, hhmm } from "./ui.tsx";
+import { PollStatus } from "./PollStatus.tsx";
+import { BellIcon } from "./ui.tsx";
 
 export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | null; connected: boolean; route: Route }) {
   const unread = snapshot?.events.filter((e) => e.isNew).length ?? 0;
-  const rl = snapshot?.rateLimit;
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -16,15 +16,7 @@ export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | nu
         {snapshot && <span className="repo">{snapshot.repo}</span>}
 
         <div className="topbar-right">
-          <span className="status" title={snapshot?.lastError ?? (connected ? "Live updates connected" : "Disconnected from server")}>
-            <span className={`dot ${!connected || snapshot?.lastError ? "bad" : "ok"}`} />
-            {!connected ? "offline" : snapshot?.lastPollAt ? `polled ${hhmm(snapshot.lastPollAt)}` : "connecting"}
-          </span>
-          {rl && (
-            <span className="status" title="GitHub REST API requests left this hour (shared with gh and other tools using your token)">
-              API {rl.remaining.toLocaleString()}/{rl.limit.toLocaleString()} · resets {hhmm(rl.resetAt)}
-            </span>
-          )}
+          <PollStatus snapshot={snapshot} connected={connected} />
           {snapshot?.login && <span className="login">@{snapshot.login}</span>}
           {snapshot && <OptionsMenu prefs={snapshot.prefs} login={snapshot.login} />}
           <RouteLink

@@ -216,7 +216,7 @@ export interface EventView extends WatchEvent {
  * Bump when the Snapshot shape changes. The page compares it with the server's
  * so a server started from older code shows a "restart" message, not a crash.
  */
-export const SNAPSHOT_SCHEMA = 7;
+export const SNAPSHOT_SCHEMA = 8;
 
 export interface Snapshot {
   schema: number;
@@ -226,6 +226,11 @@ export interface Snapshot {
   repo: string;
   generatedAt: string;
   lastPollAt: string | null;
+  /** When PRs were last fetched, and when the next fetch is due. */
+  prPolledAt: string | null;
+  nextPrPollAt: string | null;
+  /** A poll is running right now (scheduled or manual). */
+  polling: boolean;
   lastError: string | null;
   /** GitHub REST core bucket (search and GraphQL have their own). */
   rateLimit: { remaining: number; limit: number; resetAt: string } | null;

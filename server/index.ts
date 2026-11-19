@@ -60,6 +60,11 @@ app.get("/api/runs/:id/jobs", async (c) => {
   }
 });
 
+app.post("/api/refresh", async (c) => {
+  await poller.refreshNow();
+  return c.json({ ok: true, lastError: poller.snapshot().lastError });
+});
+
 app.post("/api/prefs", async (c) => {
   const body = await c.req.json().catch(() => null);
   poller.setPrefs(body);

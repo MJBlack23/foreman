@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { nextPrPollMs, pollProgress } from "./poll.ts";
 import { computeEta, formatDuration, formatTimeLeft, median, typicalDurationMs } from "./eta.ts";
 import { buildEvents } from "./events.ts";
 import { T0, iso, job, min, pr, run, step } from "./fixtures.ts";
@@ -516,5 +517,23 @@ describe("search", () => {
 
   it("matches everything for an empty query", () => {
     expect(matchesQuery(p, "  ")).toBe(true);
+  });
+});
+
+describe("PR poll timing", () => {
+  const S = 1000;
+  it("next PR fetch is the first tick at least ~60s after the last one", () => {
+    // Fetched at 0, next tick at 30s: too early, so the tick after (60s).
+    expect(nextPrPollMs(0, 30 * S, 30 * S, 60 * S)).toBe(60 * S);
+    // A slow tick pushed the next tick past 59s: that one fetches.
+    expect(nextPrPollMs(0, 59.5 * S, 30 * S, 60 * S)).toBe(59.5 * S);
+  });
+  it("progress runs 0..1 across the window and clamps", () => {
+    const last = new Date(0).toISOString();
+    const next = new Date(60 * S).toISOString();
+    expect(pollProgress(last, next, 0)).toBe(0);
+    expect(pollProgress(last, next, 30 * S)).toBe(0.5);
+    expect(pollProgress(last, next, 90 * S)).toBe(1);
+    expect(pollProgress(null, next, 30 * S)).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
 import { buildEvents, EVENT_WINDOW_MS } from "../core/events.ts";
 import { typicalDurationMs } from "../core/eta.ts";
 import { isRunActive, matchRunToPr } from "../core/match.ts";
+import { nextPrPollMs } from "../core/poll.ts";
 import { diffUnseen, planNotifications, type PlannedNotification } from "../core/seen.ts";
 import { AUTHOR_KEYS, type AuthorKey, type GhJob, type GhPr, type GhRun, type JobsPayload, SNAPSHOT_SCHEMA, type Snapshot } from "../core/types.ts";
 import { resolveTickets } from "../core/tickets.ts";
@@ -31,6 +32,10 @@ export class Poller {
   private listeners = new Set<Listener>();
   private current: Snapshot;
   private timer: NodeJS.Timeout | null = null;
+  private nextTickMs: number | null = null;
+  private running: Promise<void> | null = null;
+  private polling = false;
+  private stopped = false;
 
   constructor(
     private gh: GitHub,
@@ -43,15 +48,47 @@ export class Poller {
   }
 
   start() {
-    const loop = async () => {
-      await this.tick();
-      this.timer = setTimeout(loop, RUNS_EVERY_MS);
-    };
-    void loop();
+    this.stopped = false;
+    void this.runTick();
   }
 
   stop() {
+    this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  /**
+   * Fetch PRs and runs now, then restart the regular schedule from here.
+   * A poll already in flight is awaited instead of starting a second one.
+   */
+  async refreshNow(): Promise<void> {
+    if (this.running) return this.running;
+    this.lastPrPollMs = 0;
+    return this.runTick();
+  }
+
+  private runTick(): Promise<void> {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.nextTickMs = null;
+    this.polling = true;
+    this.current = this.compute(Date.now()).snapshot;
+    this.emit();
+    this.running = (async () => {
+      try {
+        await this.tick();
+      } finally {
+        this.polling = false;
+        this.running = null;
+        if (!this.stopped) {
+          this.nextTickMs = Date.now() + RUNS_EVERY_MS;
+          this.timer = setTimeout(() => void this.runTick(), RUNS_EVERY_MS);
+        }
+        this.republish();
+      }
+    })();
+    return this.running;
   }
 
   snapshot(): Snapshot {
@@ -231,6 +268,12 @@ export class Poller {
       repo: `${REPO_OWNER}/${REPO_NAME}`,
       generatedAt: new Date(nowMs).toISOString(),
       lastPollAt: this.lastPollAt,
+      prPolledAt: this.lastPrPollMs ? new Date(this.lastPrPollMs).toISOString() : null,
+      nextPrPollAt:
+        this.lastPrPollMs && this.nextTickMs
+          ? new Date(nextPrPollMs(this.lastPrPollMs, this.nextTickMs, RUNS_EVERY_MS, PRS_EVERY_MS)).toISOString()
+          : null,
+      polling: this.polling,
       lastError: this.lastError,
       rateLimit: this.gh.rateLimit,
       typicalMs: typicalDurationMs(this.runs),

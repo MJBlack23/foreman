@@ -76,11 +76,30 @@ code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: va
 .logo { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
 .repo { color: var(--topbar-muted); font-size: 13px; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--topbar-muted); }
-.status { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .login { color: var(--topbar-text); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot.ok { background: var(--green); }
 .dot.bad { background: var(--red); }
+
+/* Poll status: bar filling toward the next PR fetch, then a refresh button. */
+.poll { display: flex; align-items: center; gap: 8px; }
+.poll-bar { width: 96px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.poll-fill { height: 100%; width: 100%; transform-origin: left center; background: var(--green); transition: transform 1s linear; }
+.poll.polling .poll-fill { background: var(--accent); transition: transform 0.25s ease-out; animation: pulse 1.2s ease-in-out infinite; }
+.poll.error .poll-fill, .poll.offline .poll-fill { background: var(--red); }
+.poll-anchor { position: relative; display: inline-flex; }
+.poll-refresh { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--topbar-text); cursor: pointer; }
+.poll-refresh:hover:not(:disabled), .poll-refresh:focus-visible { background: rgba(255, 255, 255, 0.12); }
+.poll-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.poll-refresh:disabled { opacity: 0.45; cursor: default; }
+.poll-refresh.spinning svg { animation: spin 0.9s linear infinite; }
+.poll-tip { position: absolute; top: calc(100% + 8px); right: 50%; transform: translateX(50%); display: grid; gap: 2px; padding: 7px 10px; border-radius: 8px; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 20; }
+.poll-anchor:hover .poll-tip, .poll-bar:focus-visible + .poll-tip { opacity: 1; visibility: visible; }
+.poll-anchor { padding: 10px 0; cursor: default; }
+.poll-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.poll-tip-row.dim { color: var(--muted); }
+.poll-tip-row.bad { color: var(--red); }
+@media (prefers-reduced-motion: reduce) { .poll-fill { transition: none; } .poll.polling .poll-fill, .poll-refresh.spinning svg { animation: none; } }
 .bell { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; color: var(--topbar-text); }
 .bell:hover, .bell.active { background: rgba(255, 255, 255, 0.12); text-decoration: none; }
 .bell-count { position: absolute; top: 1px; right: 0; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; border: 2px solid var(--topbar); }
@@ -350,12 +369,12 @@ a.ticket:hover { text-decoration: none; background: color-mix(in srgb, var(--acc
 .facts dd { margin: 0; min-width: 0; }
 
 @media (max-width: 720px) {
-  .repo, .topbar-right .status:nth-child(2) { display: none; }
+  .repo { display: none; }
   .event-head { flex-wrap: wrap; }
   .event-head .when { margin-left: 0; width: 100%; }
   .facts { grid-template-columns: 1fr; }
   .facts dt { margin-top: 6px; }
 }
 @media (max-width: 480px) {
-  .topbar-right .status:first-child { display: none; }
+  .poll-bar { width: 48px; }
 }
