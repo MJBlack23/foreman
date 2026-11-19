@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Confirm production restart</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1f2328}
+a{color:#0969da;text-decoration:none}a:hover{color:#0550ae;text-decoration:underline}
+.mono{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+.btn{font:inherit;font-size:14px;font-weight:600;padding:8px 16px;border-radius:8px;border:1px solid #d0d7de;background:#f6f8fa;color:#1f2328;min-height:44px}
+</style>
+</helmet>
+<div style="width: 760px; height: 620px; background: rgba(31,35,40,0.55); display: grid; place-items: center; box-sizing: border-box; padding: 32px;">
+  <section role="dialog" aria-modal="true" aria-labelledby="restart-title" style="width: 560px; background: #ffffff; border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,0.3); overflow: hidden;">
+    <div style="background: #cf222e; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: .12em; padding: 4px 20px;">PRODUCTION · argo.internal.cloudspot.io</div>
+    <div style="padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
+      <h2 id="restart-title" style="margin: 0; font-size: 20px;">Restart cloudspot-users?</h2>
+      <p style="margin: 0; color: #57606a; font-size: 13px;">Kubernetes replaces the 2 pods one at a time with the same image. The running commit stays <span class="mono" style="background: #eaeef2; padding: 1px 6px; border-radius: 4px;">3b7d0c1</span>.</p>
+      <div style="border: 1px solid #d0d7de; border-radius: 10px;">
+        <sc-for list="{{pods}}" as="p" hint-placeholder-count="2">
+          <div style="display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #eaeef2;">
+            <span class="mono" style="flex: 1; min-width: 0;">{{p.name}}</span>
+            <span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 12px; background: {{p.bg}}; color: {{p.fg}};">{{p.status}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin: 0; font-size: 12px; color: #57606a;">The action is logged to cluster-actions.log with time, app and Argo’s response.</p>
+    </div>
+    <div style="padding: 14px 24px 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #eaeef2;">
+      <a href="AppDetail.dc.html" class="btn" style="text-decoration: none; display: inline-flex; align-items: center;">Cancel</a>
+      <a href="AppDetail.dc.html" class="btn" style="background: #cf222e; border-color: #cf222e; color: #ffffff; text-decoration: none; display: inline-flex; align-items: center;">Restart in production</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":620}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      pods: [
+        { name: 'cloudspot-users-6b8d4-r7tjm', status: 'CrashLoopBackOff · 7 restarts', bg: '#ffebe9', fg: '#cf222e' },
+        { name: 'cloudspot-users-6b8d4-k2wqs', status: 'Running', bg: '#dafbe1', fg: '#1a7f37' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

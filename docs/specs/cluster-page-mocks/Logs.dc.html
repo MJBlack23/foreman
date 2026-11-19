@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Logs: users</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#f6f8fa;color:#1f2328;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+a{color:#0969da;text-decoration:none}a:hover{color:#0550ae;text-decoration:underline}
+.pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.ok{background:#dafbe1;color:#1a7f37}.warn{background:#fff8c5;color:#7d5600}.bad{background:#ffebe9;color:#cf222e}.info{background:#ddf4ff;color:#0969da}.grey{background:#eaeef2;color:#57606a}
+.mono{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+.btn{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid #d0d7de;background:#f6f8fa;color:#1f2328;min-height:34px;display:inline-flex;align-items:center;gap:6px}
+.field{font:inherit;font-size:13px;padding:6px 10px;border:1px solid #d0d7de;border-radius:8px;background:#ffffff;color:#1f2328;min-height:34px}
+.lbl{font-size:11px;font-weight:600;color:#57606a;text-transform:uppercase;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="min-height: 900px; display: flex; flex-direction: column;">
+  <header style="background: #24292f; color: #ffffff;">
+    <div style="max-width: 1400px; margin: 0 auto; padding: 0 16px; min-height: 52px; display: flex; align-items: center; gap: 18px;">
+      <span style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #8250df;"></span>PR Dashboard</span>
+      <nav style="display: flex; gap: 4px;" aria-label="Pages"><a href="#" style="color: #b7bdc8; padding: 6px 10px; font-size: 13px;">PRs</a><a href="Main.dc.html" aria-current="page" style="color: #ffffff; padding: 6px 10px; border-radius: 7px; font-size: 13px; background: rgba(255,255,255,.12); font-weight: 600;">Cluster</a></nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1400px; width: 100%; margin: 0 auto; padding: 20px 16px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #57606a; display: flex; gap: 6px; align-items: center;"><a href="Main.dc.html">Cluster</a><span aria-hidden="true">/</span><span class="pill bad" style="font-size: 10px;">PRD</span><span aria-hidden="true">/</span><a href="AppDetail.dc.html">users</a><span aria-hidden="true">/</span><span style="color: #1f2328; font-weight: 600;">Logs</span></nav>
+      <span class="pill bad">Degraded · 7 restarts</span>
+    </div>
+
+    <section style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; border-bottom: 1px solid #d0d7de;">
+        <label style="display: flex; flex-direction: column; gap: 4px;"><span class="lbl">Source</span>
+          <select class="field" style="min-width: 300px;"><option>Pod cloudspot-users-6b8d4-r7tjm</option><option>All pods of cloudspot-users</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px;"><span class="lbl">Container</span>
+          <select class="field"><option>users</option><option>istio-proxy</option></select></label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 34px; padding: 0 10px; border: 1px solid #cf222e; border-radius: 8px; background: #fff5f5; color: #cf222e; font-weight: 600;"><input type="checkbox" checked="checked"> Previous container (crashed 2 min ago)</label>
+        <span style="flex: 1;"></span>
+        <span style="font-size: 12px; color: #57606a; min-height: 34px; display: flex; align-items: center;">142 new lines while paused</span>
+        <button class="btn" style="background: #8250df; border-color: #8250df; color: #ffffff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg>Resume</button>
+        <button class="btn">Copy visible</button>
+      </div>
+
+      <div style="padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-bottom: 1px solid #d0d7de; background: #f6f8fa;">
+        <span class="lbl" style="margin-right: 4px;">Filter</span>
+        <sc-for list="{{rules}}" as="rule" hint-placeholder-count="3">
+          <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 14px; font-size: 12px; font-weight: 600; background: {{rule.bg}}; color: {{rule.fg}}; border: 1px solid {{rule.border}};">
+            <span>{{rule.mode}}</span><span class="mono" style="font-weight: 500;">{{rule.text}}</span>
+            <button aria-label="Remove rule" style="border: 0; background: transparent; color: inherit; width: 22px; height: 22px; border-radius: 11px; font-size: 14px; line-height: 1;">×</button>
+          </span>
+        </sc-for>
+        <span style="display: inline-flex; gap: 6px; align-items: center; margin-left: 6px;">
+          <label><span style="position: absolute; left: -9999px;">Rule mode</span><select class="field" style="min-height: 30px; padding: 3px 8px;"><option>Include</option><option>Exclude</option></select></label>
+          <label><span style="position: absolute; left: -9999px;">Rule text</span><input class="field" placeholder="text or /regex/" style="min-height: 30px; padding: 3px 8px; width: 200px;"></label>
+          <button class="btn" style="min-height: 30px; padding: 3px 10px;">Add</button>
+        </span>
+        <span style="flex: 1;"></span>
+        <span style="font-size: 12px; color: #57606a;">Showing 38 of 1,204 lines · rules saved for users</span>
+      </div>
+
+      <div style="background: #0d1117; color: #e6edf3; padding: 10px 0; height: 520px; overflow: auto;" class="mono" role="log" aria-label="Log lines">
+        <sc-for list="{{lines}}" as="l" hint-placeholder-count="14">
+          <div style="display: grid; grid-template-columns: 110px 70px minmax(0, 1fr); gap: 12px; padding: 1px 16px; background: {{l.bg}};">
+            <span style="color: #8d96a0;">{{l.ts}}</span>
+            <span style="color: {{l.levelColor}}; font-weight: 600;">{{l.level}}</span>
+            <span style="white-space: pre-wrap; overflow-wrap: anywhere;">{{l.text}}</span>
+          </div>
+        </sc-for>
+        <div style="padding: 8px 16px; color: #8d96a0;">— end of previous container: exited with code 1 (OOMKilled) at 12:41:07 —</div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = (ts, level, text) => ({
+      ts, level, text,
+      levelColor: level === 'ERROR' ? '#f85149' : level === 'WARN' ? '#d29922' : '#3fb950',
+      bg: level === 'ERROR' ? 'rgba(248,81,73,0.10)' : 'transparent'
+    });
+    return {
+      rules: [
+        { mode: 'include', text: 'error', bg: '#dafbe1', fg: '#1a7f37', border: '#a7e3b7' },
+        { mode: 'include', text: 'mongo', bg: '#dafbe1', fg: '#1a7f37', border: '#a7e3b7' },
+        { mode: 'exclude', text: '/GET \\/healthz/', bg: '#ffebe9', fg: '#cf222e', border: '#f5b8b3' }
+      ],
+      lines: [
+        L('12:40:51.204', 'INFO', 'mongo: connected to users-rs0 (3 members)'),
+        L('12:40:52.880', 'WARN', 'mongo: slow query users.find 1,842ms {lastNotificationDate:{$exists:false}}'),
+        L('12:40:55.117', 'ERROR', 'UserStore.loadBatch: error reading cursor: operation exceeded time limit'),
+        L('12:40:55.118', 'ERROR', '    at UserStore.loadBatch (services/users/src/store.ts:212:15)'),
+        L('12:40:58.402', 'WARN', 'mongo: pool waitQueue at 48 of 50'),
+        L('12:41:01.930', 'ERROR', 'heap usage 1.88 GB of 2 GB after mongo batch of 50,000 users'),
+        L('12:41:04.552', 'ERROR', 'UserStore.loadBatch: error: MongoNetworkTimeoutError'),
+        L('12:41:06.990', 'ERROR', 'FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

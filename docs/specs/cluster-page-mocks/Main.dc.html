@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cluster: Production apps</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#f6f8fa;color:#1f2328;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+a{color:#0969da;text-decoration:none}a:hover{color:#0550ae;text-decoration:underline}
+.pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.ok{background:#dafbe1;color:#1a7f37}.warn{background:#fff8c5;color:#7d5600}.bad{background:#ffebe9;color:#cf222e}.info{background:#ddf4ff;color:#0969da}.grey{background:#eaeef2;color:#57606a}
+.mono{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.th{font-size:11px;font-weight:600;color:#57606a;text-transform:uppercase;letter-spacing:.04em}
+</style>
+</helmet>
+<div style="min-height: 940px; display: flex; flex-direction: column;">
+
+  <header style="background: #24292f; color: #ffffff;">
+    <div style="max-width: 1400px; margin: 0 auto; padding: 0 16px; min-height: 52px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+      <span style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #8250df; box-shadow: 0 0 0 3px rgba(130,80,223,.35);"></span>PR Dashboard</span>
+      <nav style="display: flex; gap: 4px;" aria-label="Pages">
+        <a href="#" style="color: #b7bdc8; padding: 6px 10px; border-radius: 7px; font-size: 13px;">PRs</a>
+        <a href="#" aria-current="page" style="color: #ffffff; padding: 6px 10px; border-radius: 7px; font-size: 13px; background: rgba(255,255,255,.12); font-weight: 600;">Cluster</a>
+      </nav>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 12px; color: #b7bdc8;">
+        <span style="width: 96px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden;"><span style="display: block; width: 62%; height: 100%; background: #1a7f37;"></span></span>
+        <button aria-label="Refresh PRs now" style="width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #fff; display: grid; place-items: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg></button>
+        <span style="color: #fff;">@MJBlack23</span>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1400px; width: 100%; margin: 0 auto; padding: 20px 16px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #d0d7de;">
+      <a href="#" aria-current="page" style="padding: 10px 14px; font-weight: 600; color: #1f2328; border-bottom: 3px solid #cf222e; margin-bottom: -1px; display: flex; align-items: center; gap: 8px;">Production <span class="pill bad" style="font-size: 10px;">PRD</span></a>
+      <a href="#" style="padding: 10px 14px; color: #57606a; display: flex; align-items: center; gap: 8px;">Staging <span class="pill warn" style="font-size: 10px;">STG</span></a>
+      <span style="margin-left: auto; font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 6px; padding-bottom: 6px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #1a7f37;"></span>argo.internal.cloudspot.io · live</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <span style="font-size: 20px; font-weight: 650;">34 apps</span>
+      <span class="pill ok">31 healthy</span>
+      <span class="pill info">1 progressing</span>
+      <span class="pill bad">1 degraded</span>
+      <span class="pill warn">2 out of sync</span>
+      <span style="flex: 1;"></span>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #57606a;"><input type="checkbox" checked="checked"> Problems first</label>
+      <label style="position: relative;"><span style="position: absolute; left: -9999px;">Filter apps</span><input type="search" placeholder="Filter apps" style="width: 240px; padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 8px; font: inherit; background: #fff;"></label>
+    </div>
+
+    <section style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden;">
+      <div style="padding: 10px 16px; border-bottom: 1px solid #d0d7de; display: flex; align-items: baseline; gap: 10px;"><h2 style="margin: 0; font-size: 14px;">Services</h2><span style="font-size: 12px; color: #57606a;">svc ApplicationSet · 28</span></div>
+      <div style="overflow-x: auto;">
+        <div style="min-width: 980px;">
+          <div class="th" style="display: grid; grid-template-columns: 200px 110px 120px 90px 80px minmax(0, 1fr) 110px; gap: 12px; padding: 8px 16px; background: #f6f8fa; border-bottom: 1px solid #d0d7de;">
+            <span>App</span><span>Sync</span><span>Health</span><span>Pods</span><span>Restarts</span><span>Running</span><span>Synced</span>
+          </div>
+          <sc-for list="{{apps}}" as="app" hint-placeholder-count="8">
+            <div style="display: grid; grid-template-columns: 200px 110px 120px 90px 80px minmax(0, 1fr) 110px; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #eaeef2; align-items: center; background: {{app.rowBg}};">
+              <a href="AppDetail.dc.html" style="font-weight: 600; color: #1f2328;">{{app.name}}</a>
+              <span><span class="pill {{app.syncTone}}">{{app.sync}}</span></span>
+              <span><span class="pill {{app.healthTone}}">{{app.health}}</span></span>
+              <span class="mono" style="color: {{app.podsColor}};">{{app.pods}}</span>
+              <span class="mono" style="color: {{app.restartColor}};">{{app.restarts}}</span>
+              <span style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                <span class="mono" style="background: #eaeef2; padding: 1px 6px; border-radius: 4px;">{{app.sha}}</span>
+                <a href="#" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">{{app.pr}}</a>
+                <sc-if value="{{app.mixed}}" hint-placeholder-val="{{false}}"><span class="pill info">rolling 2/3</span></sc-if>
+              </span>
+              <span style="font-size: 12px; color: #57606a;">{{app.when}}</span>
+            </div>
+          </sc-for>
+          <div style="padding: 10px 16px; font-size: 13px;"><a href="#">Show 20 more healthy apps</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="background: #ffffff; border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden;">
+      <div style="padding: 10px 16px; border-bottom: 1px solid #d0d7de; display: flex; align-items: baseline; gap: 10px;"><h2 style="margin: 0; font-size: 14px;">Jobs</h2><span style="font-size: 12px; color: #57606a;">job ApplicationSet · 6 · no restart for CronJobs</span></div>
+      <sc-for list="{{jobs}}" as="job" hint-placeholder-count="2">
+        <div style="display: grid; grid-template-columns: 200px 110px 120px minmax(0, 1fr) 200px; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #eaeef2; align-items: center;">
+          <a href="#" style="font-weight: 600; color: #1f2328;">{{job.name}}</a>
+          <span><span class="pill ok">Synced</span></span>
+          <span><span class="pill {{job.tone}}">{{job.health}}</span></span>
+          <span style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="background: #eaeef2; padding: 1px 6px; border-radius: 4px;">{{job.sha}}</span><a href="#">{{job.pr}}</a></span>
+          <span style="font-size: 12px; color: #57606a;">{{job.last}}</span>
+        </div>
+      </sc-for>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (name, sync, health, pods, restarts, sha, pr, when, extra) => {
+      const syncTone = sync === 'Synced' ? 'ok' : 'warn';
+      const healthTone = health === 'Healthy' ? 'ok' : health === 'Progressing' ? 'info' : 'bad';
+      const problem = sync !== 'Synced' || health !== 'Healthy';
+      return Object.assign({
+        name, sync, health, pods, restarts, sha, pr, when, syncTone, healthTone, mixed: false,
+        rowBg: problem ? '#fffdf5' : '#ffffff',
+        podsColor: health === 'Degraded' ? '#cf222e' : '#1f2328',
+        restartColor: Number(restarts) > 0 ? '#cf222e' : '#57606a'
+      }, extra || {});
+    };
+    return {
+      apps: [
+        row('users', 'Synced', 'Degraded', '1/2', '7', '3b7d0c1', '#7545 fix(admin-bff): relay notifications 4xx', '2 h ago'),
+        row('admin-bff', 'OutOfSync', 'Progressing', '2/3', '0', '9c41e2a', '#7548 fix(email-templates): greet OTP recipients', 'syncing…', { mixed: true }),
+        row('mailer', 'OutOfSync', 'Healthy', '1/1', '0', '0d2c77e', '#7550 Add EmailsService.send', '3 min ago · git ahead'),
+        row('api-server', 'Synced', 'Healthy', '3/3', '0', 'f8f6d60', '#7552 Send the email from POST /internal/email', '4 min ago'),
+        row('notifications', 'Synced', 'Healthy', '2/2', '0', '51aa9e0', '#7543 feat(notifications): validate POST /internal/email', '1 h ago'),
+        row('user-gateway', 'Synced', 'Healthy', '2/2', '1', 'a7e3f19', '#7531 docs(user-gateway): add the user gateway contract', '6 h ago'),
+        row('sso', 'Synced', 'Healthy', '2/2', '0', 'c90b4d2', '#7519 fix(sso): refresh token clock skew', '1 d ago'),
+        row('webhook-gateway', 'Synced', 'Healthy', '2/2', '0', '44f1a08', '#7502 chore: bump hono', '2 d ago')
+      ],
+      jobs: [
+        { name: 'flodesk-sync', health: 'Healthy', tone: 'ok', sha: '9c41e2a', pr: '#7548', last: 'last run 03:00 · succeeded' },
+        { name: 'user-purge-investigate', health: 'Healthy', tone: 'ok', sha: '9c41e2a', pr: '#7548', last: 'last run 02:30 · succeeded' },
+        { name: 'delinquent-audit-prepare', health: 'Degraded', tone: 'bad', sha: '2e6b9f3', pr: '#7488', last: 'last run 01:00 · failed' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
