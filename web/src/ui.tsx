@@ -18,6 +18,20 @@ export function Ext({ href, children, className }: { href: string; children: Rea
   );
 }
 
+/** Foreman's mark, the same factory as the favicon (web/public/favicon.svg). */
+export function FactoryIcon() {
+  return (
+    <svg className="logo" width="22" height="22" viewBox="5 5 23 22" aria-hidden>
+      <path d="M5 26V14l6 4v-4l6 4v-4l6 4V6h4v20z" fill="var(--brand)" />
+      <g fill="var(--topbar)">
+        <rect x="8" y="21" width="3" height="2.5" rx=".5" />
+        <rect x="14" y="21" width="3" height="2.5" rx=".5" />
+        <rect x="20" y="21" width="3" height="2.5" rx=".5" />
+      </g>
+    </svg>
+  );
+}
+
 export function BellIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { formatAge, needsAttention, shortSha, sortApps } from "../../core/cluster.ts";
+import { formatAge, needsAttention, shortSha, type SortKey, sortAppsBy } from "../../core/cluster.ts";
 import { formatAgo } from "../../core/pr.ts";
 import type {
   ClusterApp,
@@ -83,7 +83,7 @@ function NotConfigured({ info }: { info: ClusterEnvInfo }) {
       <p className="muted small">
         Start the server with the Argo variables in its environment, for example{" "}
         <code>doppler run --project foreman --config prd -- pnpm start</code>, or put them in{" "}
-        <code>~/Library/Application Support/merge-watch/argo.env</code>. See <code>docs/specs/cluster-page.md</code>.
+        <code>~/Library/Application Support/merge-watch/argo.env</code>. See the README.
       </p>
     </section>
   );
@@ -118,6 +118,77 @@ function StreamBadge({ state, message, connected }: { state: string; message: st
 
 type ListTab = "svc" | "job";
 
+interface ListView {
+  sort: SortKey;
+  desc: boolean;
+  /** Empty = no filter. */
+  health: string[];
+  sync: string[];
+}
+
+const VIEW_KEY = "foreman:cluster-list";
+const DEFAULT_VIEW: ListView = { sort: "attention", desc: false, health: [], sync: [] };
+const HEALTH_VALUES = ["Healthy", "Progressing", "Degraded", "Suspended", "Missing", "Unknown"];
+const SYNC_VALUES = ["Synced", "OutOfSync", "Unknown"];
+
+/** Sort and filters for the app list, remembered in this browser. */
+function useListView(): [ListView, (v: ListView) => void] {
+  const [view, setView] = useState<ListView>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "null") as Partial<ListView> | null;
+      return { ...DEFAULT_VIEW, ...(raw ?? {}) };
+    } catch {
+      return DEFAULT_VIEW;
+    }
+  });
+  const save = (v: ListView) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify(v));
+    } catch {}
+  };
+  return [view, save];
+}
+
+function FilterChips({
+  label,
+  values,
+  present,
+  selected,
+  onChange,
+  text = (v) => v,
+}: {
+  label: string;
+  values: string[];
+  present: Set<string>;
+  selected: string[];
+  onChange: (next: string[]) => void;
+  text?: (v: string) => string;
+}) {
+  // Show values that occur in this tab, plus any already selected.
+  const shown = values.filter((v) => present.has(v) || selected.includes(v));
+  // One value can't narrow anything; keep the group only if a filter is on, so it can be cleared.
+  if (shown.length < 2 && !selected.length) return null;
+  return (
+    <div className="filter-group" role="group" aria-label={`Filter by ${label.toLowerCase()}`}>
+      <span className="filter-label">{label}</span>
+      {shown.map((v) => {
+        const on = selected.includes(v);
+        return (
+          <button
+            key={v}
+            className={`filter-chip ${on ? "on" : ""}`}
+            aria-pressed={on}
+            onClick={() => onChange(on ? selected.filter((x) => x !== v) : [...selected, v])}
+          >
+            {text(v)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 async function setHidden(app: string, hidden: boolean) {
   const res = await fetch("/api/cluster/hidden", {
     method: "POST",
@@ -143,10 +214,32 @@ function AppList({ env, tab, now, toast }: { env: ClusterEnv; tab: ListTab; now:
 
   const all = payload?.apps ?? [];
   const q = query.trim().toLowerCase();
+  const [view, setView] = useListView();
+  const tabApps = useMemo(() => all.filter((a) => a.group === tab), [all, tab]);
   const inTab = useMemo(
-    () => sortApps(all.filter((a) => a.group === tab && (!q || a.name.includes(q) || a.image?.pr?.title.toLowerCase().includes(q)))),
-    [all, tab, q],
+    () =>
+      sortAppsBy(
+        tabApps.filter(
+          (a) =>
+            (!q || a.name.includes(q) || a.image?.pr?.title.toLowerCase().includes(q)) &&
+            (!view.health.length || view.health.includes(a.health)) &&
+            (!view.sync.length || view.sync.includes(a.sync)),
+        ),
+        view.sort,
+        view.desc,
+      ),
+    [tabApps, q, view],
   );
+  const filtered = view.health.length + view.sync.length > 0;
+  // Each header cycles: ascending → descending → back to the default (attention first).
+  const onSort = (key: SortKey) => {
+    if (view.sort !== key) setView({ ...view, sort: key, desc: false });
+    else if (!view.desc) setView({ ...view, desc: true });
+    else setView({ ...view, sort: "attention", desc: false });
+  };
+  const healthSet = new Set(tabApps.map((a) => a.health));
+  const syncSet = new Set(tabApps.map((a) => a.sync));
+  const showFilters = healthSet.size > 1 || syncSet.size > 1 || filtered;
   const visible = inTab.filter((a) => !hiddenSet.has(a.name));
   const hidden = inTab.filter((a) => hiddenSet.has(a.name));
   const count = (g: ListTab) => {
@@ -203,16 +296,40 @@ function AppList({ env, tab, now, toast }: { env: ClusterEnv; tab: ListTab; now:
         />
       </div>
       {payload?.message && <div className="banner">{payload.message}</div>}
+      {payload && showFilters && (
+        <div className="filters-row">
+          <FilterChips
+            label="Health"
+            values={HEALTH_VALUES}
+            present={healthSet}
+            selected={view.health}
+            onChange={(health) => setView({ ...view, health })}
+          />
+          <FilterChips
+            label="Sync"
+            values={SYNC_VALUES}
+            present={syncSet}
+            selected={view.sync}
+            onChange={(sync) => setView({ ...view, sync })}
+            text={(v) => (v === "OutOfSync" ? "Out of sync" : v)}
+          />
+          {filtered && (
+            <button className="link-button" onClick={() => setView({ ...view, health: [], sync: [] })}>
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
       {!payload || (payload.state === "loading" && !payload.apps.length) ? (
         <p className="muted">Loading apps from Argo…</p>
       ) : (
         <section className="cluster-card">
           {visible.length === 0 ? (
             <p className="muted small">
-              {q ? "No apps match the filter." : hidden.length ? `Every ${tab === "svc" ? "service" : "job"} is hidden.` : "No apps."}
+              {q || filtered ? "No apps match the filters." : hidden.length ? `Every ${tab === "svc" ? "service" : "job"} is hidden.` : "No apps."}
             </p>
           ) : (
-            <AppTable apps={visible} env={env} now={now} action={(a) => (
+            <AppTable apps={visible} env={env} now={now} sort={view} onSort={onSort} action={(a) => (
               <button className="icon-button" onClick={() => toggle(a.name, true)} title={`Hide ${a.name}`} aria-label={`Hide ${a.name}`}>
                 <EyeOffIcon />
               </button>
@@ -226,7 +343,7 @@ function AppList({ env, tab, now, toast }: { env: ClusterEnv; tab: ListTab; now:
                 {!showHidden && needsAttentionText(hidden.filter(needsAttention).length)}
               </button>
               {showHidden && (
-                <AppTable apps={hidden} env={env} now={now} dim action={(a) => (
+                <AppTable apps={hidden} env={env} now={now} sort={view} onSort={onSort} dim action={(a) => (
                   <button className="link-button" onClick={() => toggle(a.name, false)}>
                     Unhide
                   </button>
@@ -242,16 +359,49 @@ function AppList({ env, tab, now, toast }: { env: ClusterEnv; tab: ListTab; now:
 
 const needsAttentionText = (n: number) => (n ? ` · ${n} need${n === 1 ? "s" : ""} attention` : "");
 
+function SortHeader({
+  label,
+  k,
+  sort,
+  onSort,
+  className,
+  title,
+}: {
+  label: string;
+  k: SortKey;
+  sort: { sort: SortKey; desc: boolean };
+  onSort: (k: SortKey) => void;
+  className?: string;
+  title?: string;
+}) {
+  const active = sort.sort === k;
+  const arrow = !active ? "" : sort.desc ? "↓" : "↑";
+  return (
+    <th className={className} aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"} title={title}>
+      <button className={`sort-button ${active ? "active" : ""}`} onClick={() => onSort(k)}>
+        {label}
+        <span className="sort-arrow" aria-hidden>
+          {arrow}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 function AppTable({
   apps,
   env,
   now,
+  sort,
+  onSort,
   action,
   dim = false,
 }: {
   apps: ClusterApp[];
   env: ClusterEnv;
   now: number;
+  sort: { sort: SortKey; desc: boolean };
+  onSort: (k: SortKey) => void;
   action: (a: ClusterApp) => ReactNode;
   dim?: boolean;
 }) {
@@ -270,12 +420,12 @@ function AppTable({
         </colgroup>
         <thead>
           <tr>
-            <th>App</th>
+            <SortHeader label="App" k="name" sort={sort} onSort={onSort} />
             <th>Health</th>
             <th>Sync</th>
             <th className="num">Pods</th>
             <th className="num">Restarts</th>
-            <th className="num" title="Since the newest pod started: the last rollout or restart">Age</th>
+            <SortHeader label="Age" k="age" sort={sort} onSort={onSort} className="num" title="Since the newest pod started: the last rollout or restart. Click to sort newest first, again for oldest first, a third time to go back." />
             <th>Running</th>
             <th aria-label="Actions" />
           </tr>

@@ -185,8 +185,40 @@ export function toClusterApp(app: ArgoApp, tree: ArgoTree | null, prOf: (sha: st
       ? { ready: live.filter((p) => p.isReady).length, total: live.length, restarts: live.reduce((n, p) => n + p.restarts, 0) }
       : null,
     newestPodAt: pods?.find((p) => p.createdAt)?.createdAt ?? null,
-    problem: worst ? `${worst.name.replace(`cloudspot-${name}-`, "…")} ${worst.phase}${worst.restarts ? ` · ${worst.restarts} restart${worst.restarts === 1 ? "" : "s"}` : ""}` : null,
+    problem: worst
+      ? `${worst.name.replace(`cloudspot-${name}-`, "…")} ${worst.phase}${worst.restarts ? ` · ${worst.restarts} restart${worst.restarts === 1 ? "" : "s"}` : ""}`
+      : staleNote(live, newest?.sha ?? null),
   };
+}
+
+/** "1 of 3 pods on an older commit (33719cd)" when pods run different commits. */
+function staleNote(pods: ClusterPod[], newestSha: string | null): string | null {
+  if (!newestSha) return null;
+  const stale = pods.filter((p) => p.image?.sha && p.image.sha !== newestSha);
+  if (!stale.length) return null;
+  const shas = [...new Set(stale.map((p) => shortSha(p.image!.sha!)))];
+  return `${stale.length} of ${pods.length} pods on an older commit (${shas.join(", ")})`;
+}
+
+export type SortKey = "attention" | "name" | "age";
+
+/** Attention first (then name), name A–Z, or newest pod first; `desc` reverses. */
+export function sortAppsBy(apps: ClusterApp[], key: SortKey, desc = false): ClusterApp[] {
+  const byName = (a: ClusterApp, b: ClusterApp) => a.name.localeCompare(b.name);
+  const ageMs = (a: ClusterApp) => (a.newestPodAt ? Date.parse(a.newestPodAt) : null);
+  const cmp = (a: ClusterApp, b: ClusterApp): number => {
+    if (key === "name") return byName(a, b);
+    if (key === "age") {
+      const x = ageMs(a);
+      const y = ageMs(b);
+      // Apps with no pods sort last either way.
+      if (x == null || y == null) return x == null && y == null ? byName(a, b) : x == null ? (desc ? -1 : 1) : desc ? 1 : -1;
+      return y - x || byName(a, b);
+    }
+    return appRank(a) - appRank(b) || byName(a, b);
+  };
+  const out = [...apps].sort(cmp);
+  return desc ? out.reverse() : out;
 }
 
 /** k9s-style age: "45s", "12m", "3h", "5d". */

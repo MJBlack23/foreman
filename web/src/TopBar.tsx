@@ -2,7 +2,7 @@ import type { Snapshot } from "../../core/types.ts";
 import { type Route, RouteLink } from "./router.tsx";
 import { OptionsMenu } from "./OptionsMenu.tsx";
 import { PollStatus } from "./PollStatus.tsx";
-import { BellIcon } from "./ui.tsx";
+import { BellIcon, FactoryIcon } from "./ui.tsx";
 
 export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | null; connected: boolean; route: Route }) {
   const unread = snapshot?.events.filter((e) => e.isNew).length ?? 0;
@@ -10,7 +10,7 @@ export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | nu
     <header className="topbar">
       <div className="topbar-inner">
         <RouteLink to="dashboard" className="brand">
-          <span className="logo" aria-hidden />
+          <FactoryIcon />
           Foreman
         </RouteLink>
         <nav className="topnav" aria-label="Pages">

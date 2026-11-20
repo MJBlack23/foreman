@@ -29,6 +29,11 @@ export function StatsBand({ merges, now }: { merges: Snapshot["merges"]; now: nu
 
   return (
     <section className="stats" aria-label="Your merged PRs">
+      <div className="stat-tiles">
+        <Tile label="Merged · 24 hours" value={stats.last24h} sub={"\u00a0"} />
+        <Tile label="Last 7 days" value={stats.last7d} sub={`${(stats.last7d / 7).toFixed(1)} a day`} />
+        <Tile label="Last 30 days" value={stats.last30d} sub={`${(stats.last30d / 30).toFixed(1)} a day`} />
+      </div>
       <div className="stat-chart">
         <div className="stat-chart-head">
           <span className="stat-label">Merges per day · last {DAYS} days</span>
@@ -42,11 +47,6 @@ export function StatsBand({ merges, now }: { merges: Snapshot["merges"]; now: nu
           </span>
         </div>
         <MergeChart daily={stats.daily} avg={stats.avg} />
-      </div>
-      <div className="stat-tiles">
-        <Tile label="Merged · 24 hours" value={stats.last24h} />
-        <Tile label="Last 7 days" value={stats.last7d} sub={`${(stats.last7d / 7).toFixed(1)} a day`} />
-        <Tile label="Last 30 days" value={stats.last30d} sub={`${(stats.last30d / 30).toFixed(1)} a day`} />
       </div>
     </section>
   );

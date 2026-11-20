@@ -16,6 +16,7 @@ import {
   PREVIEW_TTL_MS,
   redact,
   sortApps,
+  sortAppsBy,
   syncRevisions,
   toClusterApp,
   toTree,
@@ -138,6 +139,30 @@ describe("toClusterApp", () => {
     expect(t.deployment).toEqual({ name: "cloudspot-api-server", kind: "Deployment" });
     expect(t.shas).toEqual([SHA_A]);
     expect(t.pods[0]!.image?.service).toBe("api-server");
+  });
+});
+
+describe("mixed commits and sorting", () => {
+  it("explains pods left on an older commit", () => {
+    const tree: ArgoTree = {
+      nodes: [
+        pod("a", img("x", SHA_A), { createdAt: "2026-11-11T17:38:00Z" }),
+        pod("b", img("x", SHA_A), { createdAt: "2026-11-11T17:30:00Z" }),
+        pod("c", img("x", SHA_B), { createdAt: "2026-11-11T03:05:00Z" }),
+      ],
+    };
+    expect(toClusterApp(app("x", "svc"), tree)!.problem).toBe("1 of 3 pods on an older commit (0d2c77e)");
+  });
+
+  it("sorts by name, age and attention", () => {
+    const mk = (name: string, createdAt: string | null, health = "Healthy") =>
+      toClusterApp(app(name, "svc", { health: { status: health } }), createdAt ? { nodes: [pod("p", img(name, SHA_A), { createdAt })] } : { nodes: [] })!;
+    const apps = [mk("b", "2026-11-10T00:00:00Z"), mk("a", "2026-11-12T00:00:00Z"), mk("c", null, "Degraded")];
+    expect(sortAppsBy(apps, "name").map((x) => x.name)).toEqual(["a", "b", "c"]);
+    expect(sortAppsBy(apps, "name", true).map((x) => x.name)).toEqual(["c", "b", "a"]);
+    expect(sortAppsBy(apps, "age").map((x) => x.name)).toEqual(["a", "b", "c"]);
+    expect(sortAppsBy(apps, "age", true).map((x) => x.name)).toEqual(["b", "a", "c"]);
+    expect(sortAppsBy(apps, "attention").map((x) => x.name)).toEqual(["c", "a", "b"]);
   });
 });
 

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Foreman: a mint factory (sawtooth roof and chimney) on a dark tile. -->
+  <rect width="32" height="32" rx="7" fill="#17211f"/>
+  <path fill="#7cc1b5" d="M5 26V14l6 4v-4l6 4v-4l6 4V6h4v20z"/>
+  <rect x="8" y="21" width="3" height="2.5" rx=".5" fill="#17211f"/>
+  <rect x="14" y="21" width="3" height="2.5" rx=".5" fill="#17211f"/>
+  <rect x="20" y="21" width="3" height="2.5" rx=".5" fill="#17211f"/>
+</svg>
