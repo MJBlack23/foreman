@@ -93,10 +93,10 @@ The role covers every app in project `default`, which includes `argocd`, `loki` 
 
 **P2. Cloudflare Access service token.** Create a service token, and add a Service Auth policy for it to the Access application in front of each Argo host. If the two hosts are separate Access applications, the token must be allowed on both. You may also choose to issue one token per host.
 
-**P3. Secrets in Doppler.** The secrets live in the Doppler project `matt-pr-dashboard`, config `prd`. They are injected into the server's environment at launch, so no secret is written to a file on disk:
+**P3. Secrets in Doppler.** The secrets live in the Doppler project `foreman` (first named `matt-pr-dashboard`), config `prd`. They are injected into the server's environment at launch, so no secret is written to a file on disk:
 
 ```bash
-doppler run --project matt-pr-dashboard --config prd -- npm start
+doppler run --project foreman --config prd -- npm start
 ```
 
 The variables are:

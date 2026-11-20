@@ -25,7 +25,7 @@ pnpm fake-argo    # a stand-in Argo CD API on :7899, for trying the Cluster page
 It needs these variables in the server's environment. Start it through Doppler so no secret sits in a file:
 
 ```bash
-doppler run --project matt-pr-dashboard --config prd -- pnpm start
+doppler run --project foreman --config prd -- pnpm start
 ```
 
 `ARGO_PRD_URL`, `ARGO_PRD_TOKEN`, `ARGO_STG_URL`, `ARGO_STG_TOKEN`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`. A missing or empty URL or token turns that tab into a "not set up" note, and the rest of the dashboard works as before. Without Doppler, the server also reads them from `argo.env` in the data folder (see Settings).
@@ -54,7 +54,7 @@ Optional `~/Library/Application Support/merge-watch/config.json`:
 
 `sound` is `false` (default, silent), `true` (macOS default sound) or a sound name such as `"Glass"`. Env vars override the file: `MERGE_WATCH_SOUND` (`0`, `1` or a sound name), `PORT`, `MERGE_WATCH_DATA_DIR`.
 
-(The folder and env var names still say `merge-watch` from the app's first name, so existing settings and seen state carry over. The Doppler project `matt-pr-dashboard` and the Argo account `pr-dashboard` also keep their names.)
+(The folder and env var names still say `merge-watch` from the app's first name, so existing settings and seen state carry over. The Argo account is still `pr-dashboard`; see [TODO.md](TODO.md).)
 
 The same folder holds `seen.json`: event ids already notified (so a restart doesn't re-notify) and ids viewed in the page (others show "New"). Ids older than 7 days are pruned.
 

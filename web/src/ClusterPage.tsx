@@ -82,7 +82,7 @@ function NotConfigured({ info }: { info: ClusterEnvInfo }) {
       <p>The server is missing {info.missing.map((m, i) => <span key={m}>{i ? ", " : ""}<code>{m}</code></span>)}.</p>
       <p className="muted small">
         Start the server with the Argo variables in its environment, for example{" "}
-        <code>doppler run --project matt-pr-dashboard --config prd -- pnpm start</code>, or put them in{" "}
+        <code>doppler run --project foreman --config prd -- pnpm start</code>, or put them in{" "}
         <code>~/Library/Application Support/merge-watch/argo.env</code>. See <code>docs/specs/cluster-page.md</code>.
       </p>
     </section>
