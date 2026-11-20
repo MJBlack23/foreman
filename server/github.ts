@@ -27,7 +27,7 @@ export class GitHub {
   constructor(token: string) {
     this.octokit = new Octokit({
       auth: token,
-      userAgent: "pr-dashboard",
+      userAgent: "foreman",
       // Octokit logs every request, and logs 304 "not modified" replies (our ETag
       // cache hits) as errors. Keep the terminal for real warnings and errors.
       log: {

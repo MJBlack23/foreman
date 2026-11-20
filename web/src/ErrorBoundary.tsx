@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     return (
       <main>
         <div className="banner">
-          <strong>PR Dashboard hit an error:</strong> {this.state.error.message}
+          <strong>Foreman hit an error:</strong> {this.state.error.message}
           <p>If you just rebuilt or updated the app, restart the server (<code>pnpm start</code>), then reload.</p>
           <button className="button" onClick={() => location.reload()}>
             Reload

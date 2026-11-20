@@ -198,7 +198,7 @@ describe("seen diff and notification plan", () => {
   it("sends one summary at startup instead of a burst", () => {
     const plan = planNotifications(diffUnseen(events, new Set()), { ...opts, startup: true });
     expect(plan).toEqual([
-      { kind: "summary", title: "PR Dashboard", message: "2 updates since you last ran this", url: opts.dashboardUrl },
+      { kind: "summary", title: "Foreman", message: "2 updates since you last ran this", url: opts.dashboardUrl },
     ]);
   });
 

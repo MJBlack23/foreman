@@ -11,7 +11,7 @@ export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | nu
       <div className="topbar-inner">
         <RouteLink to="dashboard" className="brand">
           <span className="logo" aria-hidden />
-          PR Dashboard
+          Foreman
         </RouteLink>
         <nav className="topnav" aria-label="Pages">
           <RouteLink to="dashboard" className={route === "dashboard" ? "active" : ""} aria-current={route === "dashboard" ? "page" : undefined}>

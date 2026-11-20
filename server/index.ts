@@ -114,7 +114,7 @@ if (existsSync(webDir)) {
 }
 
 serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, () => {
-  console.log(`PR Dashboard on ${dashboardUrl} (sound: ${config.sound === false ? "off" : config.sound})`);
+  console.log(`Foreman on ${dashboardUrl} (sound: ${config.sound === false ? "off" : config.sound})`);
   for (const e of cluster.info())
     console.log(`[argo:${e.id}] ${e.configured ? `using ${e.host}` : `not configured (missing ${e.missing.join(", ")})`}`);
   poller.start();

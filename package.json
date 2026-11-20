@@ -1,9 +1,9 @@
 {
-  "name": "pr-dashboard",
+  "name": "foreman",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local watcher for my CloudSpot PRs and the CI run each one triggers after merge",
+  "description": "Local watcher for my CloudSpot PRs, their deploy runs, and the clusters they ship to",
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,magenta \"tsx watch server/index.ts\" \"vite\"",
     "build": "vite build",

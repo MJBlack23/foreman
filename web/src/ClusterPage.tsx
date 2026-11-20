@@ -37,7 +37,7 @@ export function ClusterPage({ now }: { now: number }) {
   }, []);
 
   useEffect(() => {
-    document.title = `${app ? `${app} · ` : ""}${env === "prd" ? "Prod" : "Staging"} · Cluster`;
+    document.title = `${app ? `${app} · ` : ""}${env === "prd" ? "Prod" : "Staging"} · Foreman`;
   }, [env, app]);
 
   const info = envs?.find((e) => e.id === env);

@@ -27,7 +27,7 @@ export function planNotifications(
     return [
       {
         kind: "summary",
-        title: "PR Dashboard",
+        title: "Foreman",
         message: `${unseen.length} updates since you last ran this`,
         url: opts.dashboardUrl,
       },

@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add a `/cluster` page to the PR Dashboard that covers what k9s is used for day to day: pod status, live logs, and the occasional restart. It also shows the commit each pod runs, linked to its PR, and lets you refresh and sync Argo CD apps. The page reaches both environments only through the Argo CD API. It never touches kubeconfig or `cs-cli`.
+Add a `/cluster` page to the PR Dashboard (since renamed Foreman) that covers what k9s is used for day to day: pod status, live logs, and the occasional restart. It also shows the commit each pod runs, linked to its PR, and lets you refresh and sync Argo CD apps. The page reaches both environments only through the Argo CD API. It never touches kubeconfig or `cs-cli`.
 
 - **Prod** is the default tab. **Staging** is a second tab.
 - Each deploy run in the side panel links to the apps it shipped and shows whether they run its commit yet.

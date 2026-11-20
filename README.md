@@ -1,6 +1,8 @@
-# PR Dashboard
+# Foreman
 
-Local tool that watches my PRs in `CloudSpot/cloudspot` and the "Build and deploy Node.js services" run each one triggers after it merges. It sends native macOS notifications when a PR merges, when a job in its run fails, and when the run completes. It also serves a dashboard at http://localhost:7896.
+Local tool that watches the work in flight and the floor it ships to. It follows my PRs in `CloudSpot/cloudspot` and the "Build and deploy Node.js services" run each one triggers after it merges, and it shows the health of the Prod and Staging clusters through Argo CD. It sends native macOS notifications when a PR merges, when a job in its run fails, and when the run completes. It serves its page at http://localhost:7896.
+
+(It was called PR Dashboard, and before that merge-watch.)
 
 ## Run
 
@@ -52,7 +54,7 @@ Optional `~/Library/Application Support/merge-watch/config.json`:
 
 `sound` is `false` (default, silent), `true` (macOS default sound) or a sound name such as `"Glass"`. Env vars override the file: `MERGE_WATCH_SOUND` (`0`, `1` or a sound name), `PORT`, `MERGE_WATCH_DATA_DIR`.
 
-(The folder and env var names still say `merge-watch` from the app's earlier name, so existing settings and seen state carry over.)
+(The folder and env var names still say `merge-watch` from the app's first name, so existing settings and seen state carry over. The Doppler project `matt-pr-dashboard` and the Argo account `pr-dashboard` also keep their names.)
 
 The same folder holds `seen.json`: event ids already notified (so a restart doesn't re-notify) and ids viewed in the page (others show "New"). Ids older than 7 days are pruned.
 

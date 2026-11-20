@@ -22,11 +22,11 @@ export function App() {
   } else if (snapshot && snapshot.schema !== SNAPSHOT_SCHEMA) {
     body = (
       <div className="banner">
-        The PR Dashboard server is running older code than this page. Stop it and run <code>pnpm start</code> again.
+        The Foreman server is running older code than this page. Stop it and run <code>pnpm start</code> again.
       </div>
     );
   } else if (!snapshot || (!snapshot.lastPollAt && !snapshot.lastError)) {
-    body = <p className="muted">{snapshot ? "Fetching your PRs and runs from GitHub…" : "Connecting to the PR Dashboard server…"}</p>;
+    body = <p className="muted">{snapshot ? "Fetching your PRs and runs from GitHub…" : "Connecting to the Foreman server…"}</p>;
   } else if (route === "notifications") {
     body = <NotificationsPage events={snapshot.events} typicalMs={snapshot.typicalMs} now={now} />;
   } else {
@@ -46,7 +46,7 @@ export function App() {
   const activeRuns = snapshot?.prs.filter((p) => p.run && isRunActive(p.run)).length ?? 0;
   useEffect(() => {
     if (route === "cluster") return;
-    document.title = activeRuns ? `(${activeRuns} building) PR Dashboard` : "PR Dashboard";
+    document.title = activeRuns ? `(${activeRuns} building) Foreman` : "Foreman";
   }, [activeRuns, route]);
 
   return (
