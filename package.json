@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,magenta \"tsx watch server/index.ts\" \"vite\"",
     "build": "vite build",
-    "start": "vite build && tsx server/index.ts",
+    "start": "vite build && concurrently -k -n server,web -c blue,magenta \"tsx watch --clear-screen=false server/index.ts\" \"vite build --watch --emptyOutDir false --logLevel warn\"",
+    "start:once": "vite build && tsx server/index.ts",
     "serve": "tsx server/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -61,3 +61,31 @@ export function markViewed(ids: string[]) {
     body: JSON.stringify({ ids }),
   });
 }
+
+/**
+ * Reload the page when the server has a newer build (from `pnpm start`'s
+ * `vite build --watch`). Waits while a confirm dialog is open.
+ */
+export function useBuildReload(everyMs = 3000) {
+  useEffect(() => {
+    let first: string | null | undefined;
+    let stopped = false;
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const { id } = (await fetch("/api/build").then((r) => r.json())) as { id: string | null };
+        if (stopped || !id) return;
+        if (first === undefined) first = id;
+        else if (id !== first && !document.querySelector(".dialog")) location.reload();
+      } catch {
+        // Server restarting; try again next time.
+      }
+    };
+    void check();
+    const t = setInterval(check, everyMs);
+    return () => {
+      stopped = true;
+      clearInterval(t);
+    };
+  }, [everyMs]);
+}

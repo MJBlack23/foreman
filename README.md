@@ -8,7 +8,8 @@ Needs Node 20+, pnpm, and `gh` signed in (the token comes from `gh auth token` a
 
 ```bash
 pnpm install
-pnpm start        # builds the page, then serves it and starts polling on :7896
+pnpm start        # builds the page and serves it on :7896; restarts the server and rebuilds the page when files change
+pnpm start:once   # the same, without watching
 pnpm dev          # server with reload + Vite dev server (proxies /api to :7896)
 pnpm test         # Vitest: run matching, events, ETA math, seen diff, labels and reviews, Cluster page
 pnpm typecheck

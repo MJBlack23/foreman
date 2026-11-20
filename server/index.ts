@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
@@ -94,6 +94,15 @@ app.post("/api/viewed", async (c) => {
 });
 
 clusterRoutes(app, cluster);
+
+// The page polls this and reloads itself when `vite build --watch` writes a new build.
+app.get("/api/build", (c) => {
+  try {
+    return c.json({ id: String(statSync(join(webDir, "index.html")).mtimeMs) });
+  } catch {
+    return c.json({ id: null });
+  }
+});
 
 // Production: serve the Vite build. In dev, Vite serves the page and proxies /api.
 if (existsSync(webDir)) {

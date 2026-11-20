@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { ClusterPage } from "./ClusterPage.tsx";
 import { isRunActive } from "../../core/match.ts";
 import { SNAPSHOT_SCHEMA } from "../../core/types.ts";
-import { useNow, useSnapshot } from "./hooks.ts";
+import { useBuildReload, useNow, useSnapshot } from "./hooks.ts";
 import { NotificationsPage } from "./NotificationsPage.tsx";
 import { PrTabs } from "./PrList.tsx";
 import { RunsPanel } from "./RunsPanel.tsx";
@@ -14,6 +14,7 @@ export function App() {
   const { snapshot, connected } = useSnapshot();
   const route = useRoute();
   const now = useNow();
+  useBuildReload();
 
   let body;
   if (route === "cluster") {
