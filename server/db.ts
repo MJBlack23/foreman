@@ -42,6 +42,32 @@ const MIGRATIONS: string[] = [
       result TEXT NOT NULL
     );
   `,
+  /* 2 */ `
+    -- Night Shift tab: every /health check, App Platform status poll and manual tick. Kept 7 days.
+    CREATE TABLE night_shift_health (
+      id     INTEGER PRIMARY KEY,
+      at     TEXT NOT NULL,          -- ISO time
+      ok     INTEGER NOT NULL,
+      status INTEGER,                -- HTTP status; null when there was no response
+      ms     INTEGER,
+      error  TEXT
+    );
+    CREATE INDEX night_shift_health_at ON night_shift_health (at);
+    CREATE TABLE night_shift_status (
+      id   INTEGER PRIMARY KEY,
+      at   TEXT NOT NULL,
+      data TEXT NOT NULL             -- JSON StatusPoll
+    );
+    CREATE INDEX night_shift_status_at ON night_shift_status (at);
+    CREATE TABLE night_shift_ticks (
+      id      INTEGER PRIMARY KEY,
+      at      TEXT NOT NULL,
+      result  TEXT NOT NULL,
+      status  INTEGER,
+      message TEXT
+    );
+    CREATE INDEX night_shift_ticks_at ON night_shift_ticks (at);
+  `,
 ];
 
 /** node:sqlite warns that it's experimental on first load; that's noise for a local tool. */

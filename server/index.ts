@@ -10,6 +10,7 @@ import { loadArgoConfig, loadConfig } from "./config.ts";
 import { getSetting, importLegacy, openDb } from "./db.ts";
 import { ghToken, GitHub } from "./github.ts";
 import { sendNotification } from "./notify.ts";
+import { loadNightShiftConfig, NightShiftStore, NightShiftWatcher, nightShiftRoutes } from "./nightShift.ts";
 import { Poller } from "./poller.ts";
 import { PrefsStore } from "./prefs.ts";
 import { SeenStore } from "./store.ts";
@@ -25,16 +26,26 @@ const store = new SeenStore(db);
 const prefs = new PrefsStore(db);
 const poller = new Poller(gh, store, prefs, (n) => sendNotification(n, config.sound), dashboardUrl);
 const argoConfig = loadArgoConfig(config.dataDir);
+const origins = dashboardOrigins(config.port, [Number(process.env.VITE_PORT ?? 5173)]);
+const nativeConfirm = process.env.ARGO_NATIVE_CONFIRM === "0" ? undefined : macConfirm;
+const nightShift = new NightShiftWatcher({
+  config: loadNightShiftConfig(),
+  store: new NightShiftStore(db),
+  seen: store,
+  notify: (n) => sendNotification(n, config.sound),
+  dashboardUrl,
+  confirm: nativeConfirm,
+});
 const cluster = new ClusterService({
   config: argoConfig,
   gh,
   db,
   port: config.port,
   // The dashboard itself, and Vite's dev server (which proxies /api here).
-  origins: dashboardOrigins(config.port, [Number(process.env.VITE_PORT ?? 5173)]),
+  origins,
   runInfo: (id) => poller.runInfo(id),
   // Prod writes also need a click in a native macOS dialog, so a local script can't make one alone.
-  nativeConfirm: process.env.ARGO_NATIVE_CONFIRM === "0" ? undefined : macConfirm,
+  nativeConfirm,
 });
 
 const app = new Hono();
@@ -51,8 +62,12 @@ app.get("/api/state", (c) => c.json(poller.snapshot()));
 app.get("/api/events", (c) =>
   streamSSE(c, async (stream) => {
     await stream.writeSSE({ event: "snapshot", data: JSON.stringify(poller.snapshot()) });
+    await stream.writeSSE({ event: "nightshift", data: JSON.stringify(nightShift.state()) });
     const unsubscribe = poller.subscribe((s) => {
       stream.writeSSE({ event: "snapshot", data: JSON.stringify(s) }).catch(() => {});
+    });
+    const unsubscribeNs = nightShift.subscribe((s) => {
+      stream.writeSSE({ event: "nightshift", data: JSON.stringify(s) }).catch(() => {});
     });
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: "ping", data: "" }).catch(() => {});
@@ -60,6 +75,7 @@ app.get("/api/events", (c) =>
     await new Promise<void>((resolve) => {
       stream.onAbort(() => {
         unsubscribe();
+        unsubscribeNs();
         clearInterval(heartbeat);
         resolve();
       });
@@ -98,6 +114,7 @@ app.post("/api/viewed", async (c) => {
 });
 
 clusterRoutes(app, cluster);
+nightShiftRoutes(app, nightShift, origins);
 
 // The page polls this and reloads itself when `vite build --watch` writes a new build.
 app.get("/api/build", (c) => {
@@ -121,12 +138,16 @@ serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, () => {
   console.log(`Foreman on ${dashboardUrl} (sound: ${config.sound === false ? "off" : config.sound})`);
   for (const e of cluster.info())
     console.log(`[argo:${e.id}] ${e.configured ? `using ${e.host}` : `not configured (missing ${e.missing.join(", ")})`}`);
+  const ns = nightShift.missing();
+  console.log(`[night-shift] watching ${nightShift.state().url}${ns.length ? ` (missing ${ns.join(", ")})` : ""}`);
   poller.start();
+  nightShift.start();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
     poller.stop();
+    nightShift.stop();
     db.close();
     process.exit(0);
   });

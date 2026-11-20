@@ -3,6 +3,7 @@ import { ClusterPage } from "./ClusterPage.tsx";
 import { isRunActive } from "../../core/match.ts";
 import { SNAPSHOT_SCHEMA } from "../../core/types.ts";
 import { useBuildReload, useNow, useSnapshot } from "./hooks.ts";
+import { NightShiftPage } from "./NightShiftPage.tsx";
 import { NotificationsPage } from "./NotificationsPage.tsx";
 import { PrTabs } from "./PrList.tsx";
 import { RunsPanel } from "./RunsPanel.tsx";
@@ -11,7 +12,7 @@ import { useRoute } from "./router.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 export function App() {
-  const { snapshot, connected } = useSnapshot();
+  const { snapshot, nightShift, connected } = useSnapshot();
   const route = useRoute();
   const now = useNow();
   useBuildReload();
@@ -19,6 +20,8 @@ export function App() {
   let body;
   if (route === "cluster") {
     body = <ClusterPage now={now} />;
+  } else if (route === "night-shift") {
+    body = <NightShiftPage state={nightShift} connected={connected} now={now} />;
   } else if (snapshot && snapshot.schema !== SNAPSHOT_SCHEMA) {
     body = (
       <div className="banner">
@@ -45,15 +48,20 @@ export function App() {
 
   const activeRuns = snapshot?.prs.filter((p) => p.run && isRunActive(p.run)).length ?? 0;
   useEffect(() => {
-    if (route === "cluster") return;
+    if (route === "cluster" || route === "night-shift") return;
     document.title = activeRuns ? `(${activeRuns} building) Foreman` : "Foreman";
   }, [activeRuns, route]);
 
   return (
     <>
-      <TopBar snapshot={snapshot?.schema === SNAPSHOT_SCHEMA ? snapshot : null} connected={connected} route={route} />
+      <TopBar
+        snapshot={snapshot?.schema === SNAPSHOT_SCHEMA ? snapshot : null}
+        nightShift={nightShift?.overall ?? null}
+        connected={connected}
+        route={route}
+      />
       <main>
-        {snapshot?.lastError && route !== "cluster" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
+        {snapshot?.lastError && route !== "cluster" && route !== "night-shift" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
         {body}
       </main>
     </>

@@ -44,6 +44,24 @@ pnpm fake-argo
 ARGO_PRD_URL=http://127.0.0.1:7899 ARGO_PRD_TOKEN=fake-token ARGO_NATIVE_CONFIRM=0 pnpm start
 ```
 
+## Night Shift page
+
+`/night-shift` watches the night-shift app on DigitalOcean App Platform (`https://night-shift-5lcby.ondigitalocean.app`; the URL and app ID are in `core/nightShift.ts`). While the server runs it:
+
+- checks `GET /health` every 10 minutes (down means a non-2xx answer or none within 10 seconds, two checks in a row);
+- polls the App Platform status every 30 minutes, or every minute while a deployment is in progress;
+- sends a macOS notification when health goes down or comes back, and when a deployment ends in `ERROR`;
+- sends `POST /tick` when you click "Tick now", after a macOS confirm dialog.
+
+Checks and manual ticks are kept in the database for 7 days. When the server isn't running nothing is checked, and the uptime strip shows that time as no data. The top-bar link carries a dot: green healthy, amber deploying, red down or the last deploy failed.
+
+It reads two variables from Doppler project `foreman` (add them as references to `night-shift`/`prd` so rotation carries over):
+
+- `DO_API_TOKEN`: a read-only DigitalOcean token. Without it the App Platform card says "not configured".
+- `NIGHT_SHIFT_TICK_SECRET`: night-shift's `TICK_SECRET`. Without it "Tick now" is disabled.
+
+The health check needs neither.
+
 ## Data
 
 Everything the app remembers is in `foreman.db`, a SQLite database in the project root (git-ignored). `FOREMAN_DB` points it somewhere else. It uses Node's built-in `node:sqlite`, so there's nothing native to install.
