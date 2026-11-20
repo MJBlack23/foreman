@@ -20,7 +20,7 @@ pnpm fake-argo    # a stand-in Argo CD API on :7899, for trying the Cluster page
 
 ## Cluster page (Argo CD)
 
-`/cluster` shows the Argo apps from the `svc` and `job` ApplicationSets, their pods, the commit and PR each pod runs, and live logs. It can also refresh and sync an app and restart a Deployment. It talks only to the Argo CD API, never to kubeconfig. The design is in [docs/specs/cluster-page.md](docs/specs/cluster-page.md).
+`/cluster` shows the Argo apps from the `svc` and `job` ApplicationSets, their pods, the commit and PR each pod runs, and live logs. It can also refresh and sync an app and restart a Deployment. It talks only to the Argo CD API, never to kubeconfig.
 
 It needs these variables in the server's environment. Start it through Doppler so no secret sits in a file:
 
