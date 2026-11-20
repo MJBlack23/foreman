@@ -1,7 +1,5 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync } from "node:fs";
-import { join } from "node:path";
 import type { Context, Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import {
@@ -37,6 +35,7 @@ import {
 } from "../core/types.ts";
 import { ArgoClient, ArgoError } from "./argo.ts";
 import { type ArgoConfig, INFRA_REPO, REPO_NAME, REPO_OWNER } from "./config.ts";
+import type { Db } from "./db.ts";
 import type { GitHub } from "./github.ts";
 import { HiddenAppsStore } from "./hiddenApps.ts";
 
@@ -353,7 +352,7 @@ export interface RunInfo {
 export interface ClusterDeps {
   config: ArgoConfig;
   gh: GitHub;
-  dataDir: string;
+  db: Db;
   port: number;
   /** Origins allowed to POST (the dashboard and, in dev, Vite). */
   origins: string[];
@@ -373,7 +372,7 @@ export class ClusterService {
 
   constructor(readonly deps: ClusterDeps) {
     this.prs = new PrResolver(deps.gh);
-    this.hidden = new HiddenAppsStore(deps.dataDir);
+    this.hidden = new HiddenAppsStore(deps.db);
     for (const env of CLUSTER_ENVS) {
       const c = deps.config.envs[env].config;
       if (!c) continue;
@@ -420,9 +419,10 @@ export class ClusterService {
   }
 
   audit(env: ClusterEnv, app: string, action: string, result: string) {
-    const line = JSON.stringify({ at: new Date().toISOString(), env, app, action, result: this.redact(result) });
     try {
-      appendFileSync(join(this.deps.dataDir, "cluster-actions.log"), line + "\n", { mode: 0o600 });
+      this.deps.db
+        .prepare("INSERT INTO cluster_actions (at, env, app, action, result) VALUES (?, ?, ?, ?, ?)")
+        .run(new Date().toISOString(), env, app, action, this.redact(result));
     } catch (e) {
       console.warn(`[argo] audit log: ${(e as Error).message}`);
     }

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -19,33 +19,22 @@ export type SoundSetting = boolean | string;
 
 export interface Config {
   port: number;
+  /** The old merge-watch data folder: imported into the database once, and still where argo.env is read from. */
   dataDir: string;
   sound: SoundSetting;
 }
 
 /**
- * Settings come from `<dataDir>/config.json` ({ "sound": false | true | "Glass" }),
+ * Settings come from the database's `settings` table ("sound", "port"),
  * overridden by env: PORT, MERGE_WATCH_DATA_DIR, MERGE_WATCH_SOUND (0/1/sound name).
  */
-export function loadConfig(env = process.env): Config {
+export function loadConfig(settings: { sound?: SoundSetting; port?: number } = {}, env = process.env): Config {
   const dataDir =
     env.MERGE_WATCH_DATA_DIR ?? join(homedir(), "Library", "Application Support", "merge-watch");
-  mkdirSync(dataDir, { recursive: true });
-
-  let file: { sound?: SoundSetting; port?: number } = {};
-  const path = join(dataDir, "config.json");
-  if (existsSync(path)) {
-    try {
-      file = JSON.parse(readFileSync(path, "utf8"));
-    } catch (e) {
-      console.warn(`[config] ignoring unreadable ${path}: ${(e as Error).message}`);
-    }
-  }
-
   return {
-    port: Number(env.PORT ?? file.port ?? 7896),
+    port: Number(env.PORT ?? settings.port ?? 7896),
     dataDir,
-    sound: parseSound(env.MERGE_WATCH_SOUND) ?? file.sound ?? false,
+    sound: parseSound(env.MERGE_WATCH_SOUND) ?? settings.sound ?? false,
   };
 }
 

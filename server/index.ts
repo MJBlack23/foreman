@@ -7,24 +7,28 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { clusterRoutes, ClusterService, dashboardOrigins, macConfirm } from "./cluster.ts";
 import { loadArgoConfig, loadConfig } from "./config.ts";
+import { getSetting, importLegacy, openDb } from "./db.ts";
 import { ghToken, GitHub } from "./github.ts";
 import { sendNotification } from "./notify.ts";
 import { Poller } from "./poller.ts";
 import { PrefsStore } from "./prefs.ts";
 import { SeenStore } from "./store.ts";
 
-const config = loadConfig();
+const db = openDb();
+const config = loadConfig({ sound: getSetting(db, "sound"), port: getSetting(db, "port") });
+const imported = importLegacy(db, config.dataDir);
+if (imported) console.log(`[db] imported ${imported.join(", ")} from ${config.dataDir} (the files are left in place)`);
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "web");
 const dashboardUrl = `http://localhost:${config.port}`;
 const gh = new GitHub(ghToken());
-const store = new SeenStore(config.dataDir);
-const prefs = new PrefsStore(config.dataDir);
+const store = new SeenStore(db);
+const prefs = new PrefsStore(db);
 const poller = new Poller(gh, store, prefs, (n) => sendNotification(n, config.sound), dashboardUrl);
 const argoConfig = loadArgoConfig(config.dataDir);
 const cluster = new ClusterService({
   config: argoConfig,
   gh,
-  dataDir: config.dataDir,
+  db,
   port: config.port,
   // The dashboard itself, and Vite's dev server (which proxies /api here).
   origins: dashboardOrigins(config.port, [Number(process.env.VITE_PORT ?? 5173)]),
@@ -123,6 +127,7 @@ serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, () => {
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
     poller.stop();
+    db.close();
     process.exit(0);
   });
 }

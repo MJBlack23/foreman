@@ -28,11 +28,11 @@ It needs these variables in the server's environment. Start it through Doppler s
 doppler run --project foreman --config prd -- pnpm start
 ```
 
-`ARGO_PRD_URL`, `ARGO_PRD_TOKEN`, `ARGO_STG_URL`, `ARGO_STG_TOKEN`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`. A missing or empty URL or token turns that tab into a "not set up" note, and the rest of the dashboard works as before. Without Doppler, the server also reads them from `argo.env` in the data folder (see Settings).
+`ARGO_PRD_URL`, `ARGO_PRD_TOKEN`, `ARGO_STG_URL`, `ARGO_STG_TOKEN`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`. A missing or empty URL or token turns that tab into a "not set up" note, and the rest of the dashboard works as before. Without Doppler, the server also reads them from `argo.env` in the old data folder (see Data).
 
-Services and Jobs are separate tabs. Hide an app with the eye button on its row; hidden names are saved in `cluster-hidden.json` in the data folder and apply to both environments.
+Services and Jobs are separate tabs. Hide an app with the eye button on its row; hidden names are saved in the database and apply to both environments.
 
-Prod sync and restart ask twice: once in the page, then in a macOS dialog the server shows itself, so a local script can't make a prod change through the API alone. `ARGO_NATIVE_CONFIRM=0` turns the macOS dialog off. Every write is logged to `cluster-actions.log` in the data folder.
+Prod sync and restart ask twice: once in the page, then in a macOS dialog the server shows itself, so a local script can't make a prod change through the API alone. `ARGO_NATIVE_CONFIRM=0` turns the macOS dialog off. Every write is logged to the `cluster_actions` table.
 
 To try it without a cluster:
 
@@ -44,19 +44,22 @@ pnpm fake-argo
 ARGO_PRD_URL=http://127.0.0.1:7899 ARGO_PRD_TOKEN=fake-token ARGO_NATIVE_CONFIRM=0 pnpm start
 ```
 
-## Settings
+## Data
 
-Optional `~/Library/Application Support/merge-watch/config.json`:
+Everything the app remembers is in `foreman.db`, a SQLite database in the project root (git-ignored). `FOREMAN_DB` points it somewhere else. It uses Node's built-in `node:sqlite`, so there's nothing native to install.
 
-```json
-{ "sound": false, "port": 7896 }
-```
+| Table | Holds |
+|---|---|
+| `settings` | `prefs` (whose PRs to watch), `sound`, `port`, and a record of the one-time import |
+| `seen` | Event ids already notified (so a restart doesn't re-notify) and ids viewed in the page (others show "New"). Ids older than 7 days are pruned. |
+| `hidden_apps` | Apps hidden from the Cluster list |
+| `cluster_actions` | Every sync and restart, with Argo's answer |
 
-`sound` is `false` (default, silent), `true` (macOS default sound) or a sound name such as `"Glass"`. Env vars override the file: `MERGE_WATCH_SOUND` (`0`, `1` or a sound name), `PORT`, `MERGE_WATCH_DATA_DIR`.
+`sound` is `false` (default, silent), `true` (macOS default sound) or a sound name such as `"Glass"`. There's no settings page yet, so set it with `sqlite3 foreman.db "INSERT OR REPLACE INTO settings VALUES ('sound', '\"Glass\"')"`, or override it with env vars: `MERGE_WATCH_SOUND` (`0`, `1` or a sound name) and `PORT`.
 
-(The folder and env var names still say `merge-watch` from the app's first name, so existing settings and seen state carry over. The Argo account is still `pr-dashboard`; see [TODO.md](TODO.md).)
+The schema is versioned with `PRAGMA user_version`; the steps are in `server/db.ts`.
 
-The same folder holds `seen.json`: event ids already notified (so a restart doesn't re-notify) and ids viewed in the page (others show "New"). Ids older than 7 days are pruned.
+On its first start the database imports the old JSON files from `~/Library/Application Support/merge-watch` (`config.json`, `prefs.json`, `seen.json`, `cluster-hidden.json`, `cluster-actions.log`) and leaves them in place. That folder is still where the optional `argo.env` lives, so secrets stay out of the project. `MERGE_WATCH_DATA_DIR` moves it. The Argo account is still `pr-dashboard`; see [TODO.md](TODO.md).
 
 ## How it works
 
@@ -65,7 +68,7 @@ The same folder holds `seen.json`: event ids already notified (so a restart does
 - `web/`: React + Vite page. It reads only from the server and never calls GitHub.
   - `/` shows a 90-day merge chart with a 7-day average and 24h / 7d / 30d totals, the PR cards (click one to expand it to full width with its summary and CI run), and the deploy-runs panel (a live hero for one run plus the list).
   - `/notifications` (the bell) shows each event in detail. Events count as read after the page has been in view for a few seconds.
-  - The Options menu in the top bar picks whose PRs to watch: mine (`author:@me`), claude[bot] (`author:app/claude`), or both. It's saved in `prefs.json` and also filters notifications.
+  - The Options menu in the top bar picks whose PRs to watch: mine (`author:@me`), claude[bot] (`author:app/claude`), or both. It's saved in the database and also filters notifications.
 
 Notes:
 

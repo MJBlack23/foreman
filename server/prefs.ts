@@ -1,23 +1,14 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { AUTHOR_KEYS, type AuthorKey, type Prefs } from "../core/types.ts";
+import { type Db, getSetting, setSetting } from "./db.ts";
 
 const DEFAULT: Prefs = { authors: ["me", "claude"] };
 
-/** Options set from the page's top bar, kept in `<dataDir>/prefs.json`. */
+/** Options set from the page's top bar, in the `settings` table under "prefs". */
 export class PrefsStore {
-  private path: string;
-  private prefs: Prefs = DEFAULT;
+  private prefs: Prefs;
 
-  constructor(dataDir: string) {
-    this.path = join(dataDir, "prefs.json");
-    if (existsSync(this.path)) {
-      try {
-        this.prefs = normalize(JSON.parse(readFileSync(this.path, "utf8")));
-      } catch (e) {
-        console.warn(`[prefs] using defaults, could not read ${this.path}: ${(e as Error).message}`);
-      }
-    }
+  constructor(private db: Db) {
+    this.prefs = normalize(getSetting(db, "prefs") ?? DEFAULT);
   }
 
   get(): Prefs {
@@ -26,9 +17,7 @@ export class PrefsStore {
 
   set(next: unknown): Prefs {
     this.prefs = normalize(next);
-    const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(this.prefs, null, 2));
-    renameSync(tmp, this.path);
+    setSetting(this.db, "prefs", this.prefs);
     return this.prefs;
   }
 }

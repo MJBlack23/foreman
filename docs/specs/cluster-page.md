@@ -233,7 +233,7 @@ export interface DiffEntry { kind: string; name: string; status: "OutOfSync" | "
   - Staging: one click.
 - **Style.** The Staging tab and every staging dialog use a distinct accent color, and the words "STAGING" in the header. Prod dialogs say "PRODUCTION" in red.
 - **Local callers.** The Origin check stops web pages, not local processes. An agent could `curl` the preview endpoint and then the sync endpoint without ever seeing a token. So for prod writes the server shows its own macOS dialog (`osascript` `display dialog`, default button Cancel, gives up after 60 seconds) before it calls Argo. Approval happens outside the browser and outside any agent. `ARGO_NATIVE_CONFIRM=0` turns it off.
-- **Audit log.** The server writes one line per write to `<dataDir>/cluster-actions.log`: time, environment, app, action, Argo response status. Tokens are never written.
+- **Audit log.** The server writes one row per write to the `cluster_actions` table in `foreman.db` (first a `cluster-actions.log` file): time, environment, app, action, Argo response status. Tokens are never written.
 
 ### Log filter
 
@@ -268,7 +268,7 @@ export interface DiffEntry { kind: string; name: string; status: "OutOfSync" | "
 | R7 | "Refresh & sync" refreshes, shows the diff, and syncs only the previewed revision. On prod it needs one Confirm. A changed revision returns 409. | Unit test for the preview check. Manual on staging. |
 | R8 | Restart works. On prod it needs a confirm, and the server rejects a confirm with the wrong app name. | Unit test. Manual on staging. |
 | N1 | A `POST /api/cluster/*` without the dashboard's `Origin` returns 403. | `curl -X POST -H 'Origin: https://evil.test' …` returns 403, covered by a test. |
-| N2 | No token or Cloudflare secret appears in a browser response, in server output, or in `cluster-actions.log`. | `grep` the log and the responses during a manual run. A unit test covers the redaction in error messages. |
+| N2 | No token or Cloudflare secret appears in a browser response, in server output, or in the audit log. | `grep` the log and the responses during a manual run. A unit test covers the redaction in error messages. |
 | N3 | With no `argo.env`, the existing dashboard works unchanged, and the Cluster page explains what is missing. | Manual |
 | N4 | The 30-second runs poll makes no Argo calls, and Argo streams close 30 seconds after the last Cluster tab closes. | Watch the log at debug level. |
 
@@ -326,7 +326,7 @@ What differs from the design above, and what is still unchecked.
 - **Pod counts in the list.** The Application object has no pod counts, so the watcher reads each shown app's resource tree when the app changes and every 30 seconds, 4 at a time.
 - **Restart route.** The client tries `POST …/resource/actions` with body `"restart"`, then the v2 route if the server answers 404, 405 or 501.
 - **Services and Jobs tabs.** The list has a Services tab (the default) and a Jobs tab (`?tab=jobs`), each with a count of apps that need attention. This replaces the grouped list and the "Show N more healthy apps" collapse.
-- **Hidden apps.** Any app can be hidden from the list. The names live in `<dataDir>/cluster-hidden.json` (`{ "hidden": [...] }`), one list for both environments, through `GET` and `POST /api/cluster/hidden`. Hidden apps sit in a collapsed "N hidden" section with Unhide buttons, which also says how many of them need attention. If storage needs grow, SQLite is the next step.
+- **Hidden apps.** Any app can be hidden from the list. The names live in the `hidden_apps` table of `foreman.db` (first a `cluster-hidden.json` file), one list for both environments, through `GET` and `POST /api/cluster/hidden`. Hidden apps sit in a collapsed "N hidden" section with Unhide buttons, which also says how many of them need attention.
 - **Fake Argo.** `server/fakeArgo.ts` (`pnpm fake-argo`) serves the endpoints above with sample apps. `server/cluster.test.ts` runs against it.
 
 Not yet checked against the real clusters:

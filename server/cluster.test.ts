@@ -7,7 +7,11 @@ import { ArgoClient, ArgoError } from "./argo.ts";
 import { clusterRoutes, ClusterService, dashboardOrigins, originAllowed } from "./cluster.ts";
 import { loadArgoConfig, parseEnvFile } from "./config.ts";
 import { FAKE_TOKEN, type FakeArgo, startFakeArgo } from "./fakeArgo.ts";
+import { type Db, getSetting, importLegacy, openDb } from "./db.ts";
 import type { GitHub } from "./github.ts";
+import { HiddenAppsStore } from "./hiddenApps.ts";
+import { PrefsStore } from "./prefs.ts";
+import { SeenStore } from "./store.ts";
 
 const CF_SECRET = "cf-secret-value-123";
 const fakeGh = { get: async () => [] } as unknown as GitHub;
@@ -54,6 +58,7 @@ describe("origin guard", () => {
 describe("against a fake Argo", () => {
   let fake: FakeArgo;
   let dataDir: string;
+  let db: Db;
   let svc: ClusterService;
   let app: Hono;
   let confirms: string[];
@@ -61,6 +66,7 @@ describe("against a fake Argo", () => {
   beforeEach(async () => {
     fake = await startFakeArgo();
     dataDir = mkdtempSync(join(tmpdir(), "argo-data-"));
+    db = openDb(":memory:");
     confirms = [];
     const config = loadArgoConfig(dataDir, {
       ARGO_PRD_URL: fake.url,
@@ -73,7 +79,7 @@ describe("against a fake Argo", () => {
     svc = new ClusterService({
       config,
       gh: fakeGh,
-      dataDir,
+      db,
       port: 7896,
       origins: dashboardOrigins(7896),
       runInfo: () => null,
@@ -141,7 +147,7 @@ describe("against a fake Argo", () => {
     expect(confirms).toEqual(["Sync mailer in PRODUCTION?"]);
     // A preview is single-use.
     expect((await post("/api/cluster/prd/apps/mailer/sync", { previewId: preview.previewId })).status).toBe(409);
-    const log = readFileSync(join(dataDir, "cluster-actions.log"), "utf8");
+    const log = JSON.stringify(db.prepare("SELECT * FROM cluster_actions").all());
     expect(log).toContain('"action":"sync"');
     expect(log).not.toContain(FAKE_TOKEN);
   });
@@ -196,16 +202,59 @@ describe("against a fake Argo", () => {
   });
 });
 
-describe("hidden apps", () => {
-  it("persists to a flat file and rejects odd names", async () => {
-    const { HiddenAppsStore } = await import("./hiddenApps.ts");
-    const dir = mkdtempSync(join(tmpdir(), "hidden-"));
-    const a = new HiddenAppsStore(dir);
-    expect(a.set("mailer", true)).toBe(true);
-    expect(a.set("api-server", true)).toBe(true);
-    expect(a.set("../etc", true)).toBe(false);
-    a.set("mailer", false);
-    expect(new HiddenAppsStore(dir).list()).toEqual(["api-server"]);
-    expect(JSON.parse(readFileSync(join(dir, "cluster-hidden.json"), "utf8"))).toEqual({ hidden: ["api-server"] });
+describe("database", () => {
+  it("hides apps and rejects odd names", () => {
+    const store = new HiddenAppsStore(openDb(":memory:"));
+    expect(store.set("mailer", true)).toBe(true);
+    expect(store.set("api-server", true)).toBe(true);
+    expect(store.set("../etc", true)).toBe(false);
+    store.set("mailer", false);
+    expect(store.list()).toEqual(["api-server"]);
+  });
+
+  it("keeps data across reopening a file", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "db-")), "foreman.db");
+    const a = openDb(path);
+    new SeenStore(a).markNotified(["e1"]);
+    new PrefsStore(a).set({ authors: ["me"] });
+    a.close();
+    const b = openDb(path);
+    expect([...new SeenStore(b).notifiedIds()]).toEqual(["e1"]);
+    expect(new PrefsStore(b).get()).toEqual({ authors: ["me"] });
+    expect((b.prepare("PRAGMA user_version").get() as { user_version: number }).user_version).toBeGreaterThan(0);
+    b.close();
+  });
+
+  it("prunes seen ids older than 7 days", () => {
+    const db = openDb(":memory:");
+    db.prepare("INSERT INTO seen (kind, id, at) VALUES ('viewed', 'old', ?)").run(Date.now() - 8 * 86_400_000);
+    const seen = new SeenStore(db);
+    seen.markViewed(["new"]);
+    expect([...seen.viewedIds()]).toEqual(["new"]);
+  });
+
+  it("imports the old merge-watch files once and leaves them in place", () => {
+    const dir = mkdtempSync(join(tmpdir(), "legacy-"));
+    writeFileSync(join(dir, "config.json"), JSON.stringify({ sound: "Glass", port: 7000 }));
+    writeFileSync(join(dir, "prefs.json"), JSON.stringify({ authors: ["claude"] }));
+    writeFileSync(join(dir, "seen.json"), JSON.stringify({ notified: { a: 1, b: 2 }, viewed: { a: 3 } }));
+    writeFileSync(join(dir, "cluster-hidden.json"), JSON.stringify({ hidden: ["mailer"] }));
+    writeFileSync(join(dir, "cluster-actions.log"), '{"at":"t","env":"prd","app":"x","action":"sync","result":"ok"}\nnot json\n');
+    const db = openDb(":memory:");
+    expect(importLegacy(db, dir)).toEqual(["config.json", "prefs.json", "seen.json", "cluster-hidden.json", "cluster-actions.log"]);
+    expect([getSetting(db, "sound"), getSetting(db, "port")]).toEqual(["Glass", 7000]);
+    expect(new PrefsStore(db).get()).toEqual({ authors: ["claude"] });
+    expect([...new SeenStore(db).notifiedIds()].sort()).toEqual(["a", "b"]);
+    expect(new HiddenAppsStore(db).list()).toEqual(["mailer"]);
+    expect(db.prepare("SELECT action FROM cluster_actions").all()).toEqual([{ action: "sync" }]);
+    // Second run is a no-op, and the files are still there.
+    expect(importLegacy(db, dir)).toBeNull();
+    expect(readFileSync(join(dir, "seen.json"), "utf8")).toContain("notified");
+  });
+
+  it("marks an empty folder as imported too", () => {
+    const db = openDb(":memory:");
+    expect(importLegacy(db, mkdtempSync(join(tmpdir(), "empty-")))).toBeNull();
+    expect(getSetting(db, "legacy_import")).toBeTruthy();
   });
 });

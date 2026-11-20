@@ -10,5 +10,7 @@
 
 ## Later
 
-- [ ] Rename the `merge-watch` data folder and `MERGE_WATCH_*` env vars to `foreman`, moving the existing folder on first start.
+- [ ] Rename the `MERGE_WATCH_*` env vars to `FOREMAN_*`, keeping the old names working for a while.
+- [ ] Retire the `merge-watch` data folder: its JSON files are imported into `foreman.db` and no longer read. Only the optional `argo.env` fallback still lives there; move it or drop it in favour of Doppler.
+- [ ] A settings page for `sound`, so it needn't be set with `sqlite3`.
 - [ ] Rename the repo folder `agent-dashboard` to `foreman`.

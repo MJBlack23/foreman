@@ -309,7 +309,7 @@ export function RestartButton({ env, app, toast }: { env: ClusterEnv; app: strin
             ))}
           </ul>
           {error && <p className="fail-text small">{error}</p>}
-          <p className="muted small">The action is logged to cluster-actions.log. A macOS dialog asks once more before Argo is called.</p>
+          <p className="muted small">The action is logged in Foreman’s audit log. A macOS dialog asks once more before Argo is called.</p>
         </Dialog>
       )}
     </>
