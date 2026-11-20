@@ -2,6 +2,7 @@ import { buildEvents, EVENT_WINDOW_MS } from "../core/events.ts";
 import { typicalDurationMs } from "../core/eta.ts";
 import { isRunActive, matchRunToPr } from "../core/match.ts";
 import { nextPrPollMs } from "../core/poll.ts";
+import { buildServices } from "../core/pr.ts";
 import { diffUnseen, planNotifications, type PlannedNotification } from "../core/seen.ts";
 import { AUTHOR_KEYS, type AuthorKey, type GhJob, type GhPr, type GhRun, type JobsPayload, SNAPSHOT_SCHEMA, type Snapshot } from "../core/types.ts";
 import { resolveTickets } from "../core/tickets.ts";
@@ -203,6 +204,24 @@ export class Poller {
       this.liveInflight.set(runId, pending);
     }
     return pending;
+  }
+
+  /** For deploy-run links: a shown run's commit, the services it built, and whether it goes to prod. */
+  runInfo(runId: number): { headSha: string | null; deployProd: boolean; services: string[] } | null {
+    const run = this.runs.find((r) => r.id === runId);
+    if (!run) return null;
+    const mine = this.current.myRuns.find((r) => r.id === runId);
+    // A run in the side panel, or the run matched to one of the PRs shown.
+    const pr = mine?.pr
+      ? this.prs.get(mine.pr.number)
+      : [...this.prs.values()].find((p) => matchRunToPr(p, this.runs)?.id === runId);
+    if (!mine && !pr) return null;
+    const jobs = this.live.get(runId)?.jobs ?? this.jobs.get(runId)?.jobs ?? this.panelJobs.get(runId) ?? [];
+    return {
+      headSha: run.headSha,
+      deployProd: !!pr?.labels.includes("deploy-prod"),
+      services: buildServices(jobs).filter((s) => s.conclusion === "success").map((s) => s.name),
+    };
   }
 
   /**

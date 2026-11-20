@@ -55,3 +55,79 @@ function parseSound(v: string | undefined): SoundSetting | undefined {
   if (["1", "true", "on", "yes"].includes(v.toLowerCase())) return true;
   return v;
 }
+
+// ── Argo CD (Cluster page) ────────────────────────────────────────────────
+
+export const INFRA_REPO = "CloudSpot/infrastructure";
+
+export interface ArgoEnvConfig {
+  url: string;
+  host: string;
+  token: string;
+  cfClientId: string | null;
+  cfClientSecret: string | null;
+}
+
+export interface ArgoConfig {
+  envs: Record<"prd" | "stg", { config: ArgoEnvConfig | null; missing: string[]; host: string | null }>;
+  /** Every secret value, for redaction. */
+  secrets: string[];
+}
+
+/** KEY=VALUE lines; `#` comments; optional quotes and `export`. */
+export function parseEnvFile(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!m) continue;
+    let v = m[2]!;
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    else v = v.replace(/\s+#.*$/, "");
+    out[m[1]!] = v;
+  }
+  return out;
+}
+
+/**
+ * Argo settings come from the process env (e.g. `doppler run`), falling back to
+ * `<dataDir>/argo.env`. Empty values count as missing.
+ */
+export function loadArgoConfig(dataDir: string, env: Record<string, string | undefined> = process.env): ArgoConfig {
+  let file: Record<string, string> = {};
+  const path = join(dataDir, "argo.env");
+  if (existsSync(path)) {
+    try {
+      file = parseEnvFile(readFileSync(path, "utf8"));
+    } catch (e) {
+      console.warn(`[argo] ignoring unreadable ${path}: ${(e as Error).message}`);
+    }
+  }
+  const get = (k: string) => {
+    const v = env[k]?.trim() || file[k]?.trim();
+    return v || null;
+  };
+
+  const secrets: string[] = [];
+  const one = (id: "prd" | "stg") => {
+    const ID = id.toUpperCase();
+    const url = get(`ARGO_${ID}_URL`)?.replace(/\/+$/, "") ?? null;
+    const token = get(`ARGO_${ID}_TOKEN`);
+    const cfClientId = get(`CF_ACCESS_${ID}_CLIENT_ID`) ?? get("CF_ACCESS_CLIENT_ID");
+    const cfClientSecret = get(`CF_ACCESS_${ID}_CLIENT_SECRET`) ?? get("CF_ACCESS_CLIENT_SECRET");
+    for (const s of [token, cfClientId, cfClientSecret]) if (s) secrets.push(s);
+    const missing = [!url && `ARGO_${ID}_URL`, !token && `ARGO_${ID}_TOKEN`].filter((x): x is string => !!x);
+    let host: string | null = null;
+    if (url) {
+      try {
+        const u = new URL(url);
+        if (u.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(u.hostname)) missing.push(`ARGO_${ID}_URL (must be https)`);
+        host = u.host;
+      } catch {
+        missing.push(`ARGO_${ID}_URL (not a URL)`);
+      }
+    }
+    const config = !missing.length && url && token && host ? { url, host, token, cfClientId, cfClientSecret } : null;
+    return { config, missing, host };
+  };
+  return { envs: { prd: one("prd"), stg: one("stg") }, secrets };
+}

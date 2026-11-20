@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ClusterPage } from "./ClusterPage.tsx";
 import { isRunActive } from "../../core/match.ts";
 import { SNAPSHOT_SCHEMA } from "../../core/types.ts";
 import { useNow, useSnapshot } from "./hooks.ts";
@@ -15,7 +16,9 @@ export function App() {
   const now = useNow();
 
   let body;
-  if (snapshot && snapshot.schema !== SNAPSHOT_SCHEMA) {
+  if (route === "cluster") {
+    body = <ClusterPage now={now} />;
+  } else if (snapshot && snapshot.schema !== SNAPSHOT_SCHEMA) {
     body = (
       <div className="banner">
         The PR Dashboard server is running older code than this page. Stop it and run <code>pnpm start</code> again.
@@ -41,14 +44,15 @@ export function App() {
 
   const activeRuns = snapshot?.prs.filter((p) => p.run && isRunActive(p.run)).length ?? 0;
   useEffect(() => {
+    if (route === "cluster") return;
     document.title = activeRuns ? `(${activeRuns} building) PR Dashboard` : "PR Dashboard";
-  }, [activeRuns]);
+  }, [activeRuns, route]);
 
   return (
     <>
       <TopBar snapshot={snapshot?.schema === SNAPSHOT_SCHEMA ? snapshot : null} connected={connected} route={route} />
       <main>
-        {snapshot?.lastError && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
+        {snapshot?.lastError && route !== "cluster" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
         {body}
       </main>
     </>

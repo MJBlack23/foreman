@@ -3,6 +3,7 @@ import { computeEta, formatDuration, formatTimeLeft } from "../../core/eta.ts";
 import { isRunActive } from "../../core/match.ts";
 import { formatAgo } from "../../core/pr.ts";
 import type { GhJob, GhStep, JobsPayload, RunSummary } from "../../core/types.ts";
+import { DeployTargets } from "./DeployTargets.tsx";
 import { Ext, hhmm } from "./ui.tsx";
 
 const LIVE_POLL_MS = 10_000;
@@ -199,6 +200,8 @@ function RunHero({
           ))}
         </ul>
       )}
+
+      <DeployTargets runId={run.id} done={!active && run.conclusion === "success"} />
 
       <div className="run-card-foot">
         <span className="muted small">

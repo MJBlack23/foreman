@@ -5,7 +5,8 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { loadConfig } from "./config.ts";
+import { clusterRoutes, ClusterService, dashboardOrigins, macConfirm } from "./cluster.ts";
+import { loadArgoConfig, loadConfig } from "./config.ts";
 import { ghToken, GitHub } from "./github.ts";
 import { sendNotification } from "./notify.ts";
 import { Poller } from "./poller.ts";
@@ -13,11 +14,24 @@ import { PrefsStore } from "./prefs.ts";
 import { SeenStore } from "./store.ts";
 
 const config = loadConfig();
+const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "web");
 const dashboardUrl = `http://localhost:${config.port}`;
 const gh = new GitHub(ghToken());
 const store = new SeenStore(config.dataDir);
 const prefs = new PrefsStore(config.dataDir);
 const poller = new Poller(gh, store, prefs, (n) => sendNotification(n, config.sound), dashboardUrl);
+const argoConfig = loadArgoConfig(config.dataDir);
+const cluster = new ClusterService({
+  config: argoConfig,
+  gh,
+  dataDir: config.dataDir,
+  port: config.port,
+  // The dashboard itself, and Vite's dev server (which proxies /api here).
+  origins: dashboardOrigins(config.port, [Number(process.env.VITE_PORT ?? 5173)]),
+  runInfo: (id) => poller.runInfo(id),
+  // Prod writes also need a click in a native macOS dialog, so a local script can't make one alone.
+  nativeConfirm: process.env.ARGO_NATIVE_CONFIRM === "0" ? undefined : macConfirm,
+});
 
 const app = new Hono();
 
@@ -79,8 +93,9 @@ app.post("/api/viewed", async (c) => {
   return c.json({ ok: true });
 });
 
+clusterRoutes(app, cluster);
+
 // Production: serve the Vite build. In dev, Vite serves the page and proxies /api.
-const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "web");
 if (existsSync(webDir)) {
   const root = relative(process.cwd(), webDir) || ".";
   app.use("/*", serveStatic({ root }));
@@ -91,6 +106,8 @@ if (existsSync(webDir)) {
 
 serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, () => {
   console.log(`PR Dashboard on ${dashboardUrl} (sound: ${config.sound === false ? "off" : config.sound})`);
+  for (const e of cluster.info())
+    console.log(`[argo:${e.id}] ${e.configured ? `using ${e.host}` : `not configured (missing ${e.missing.join(", ")})`}`);
   poller.start();
 });
 

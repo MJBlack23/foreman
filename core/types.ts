@@ -71,6 +71,8 @@ export interface GhRun {
   id: number;
   runNumber: number;
   headBranch: string | null;
+  /** The commit the run built; image tags use it. */
+  headSha: string | null;
   event: string;
   status: RunStatus | string;
   conclusion: string | null;
@@ -245,4 +247,153 @@ export interface Snapshot {
   /** merged_at of my PRs over the last ~91 days, for the stats band. Null until first fetched. */
   merges: { mergedAts: string[]; fetchedAt: string } | null;
   events: EventView[];
+}
+
+// ── Cluster page (Argo CD) ────────────────────────────────────────────────
+
+export type ClusterEnv = "prd" | "stg";
+export const CLUSTER_ENVS: ClusterEnv[] = ["prd", "stg"];
+export const CLUSTER_ENV_LABEL: Record<ClusterEnv, string> = { prd: "Prod", stg: "Staging" };
+
+export interface PrRef {
+  number: number;
+  title: string;
+  htmlUrl: string;
+}
+
+/** What the browser learns about an environment's Argo setup. Never holds a secret. */
+export interface ClusterEnvInfo {
+  id: ClusterEnv;
+  label: string;
+  host: string | null;
+  configured: boolean;
+  /** Variable names that are missing or empty. */
+  missing: string[];
+}
+
+export type AppSync = "Synced" | "OutOfSync" | "Unknown";
+export type AppHealth = "Healthy" | "Progressing" | "Degraded" | "Suspended" | "Missing" | "Unknown";
+
+export interface ImageRef {
+  service: string;
+  /** Full 40-char commit SHA, or null when the tag isn't one. */
+  sha: string | null;
+  tag: string;
+}
+
+export interface ClusterApp {
+  name: string;
+  group: "svc" | "job";
+  sync: AppSync;
+  health: AppHealth;
+  /** Infrastructure commit Argo last synced. */
+  revision: string | null;
+  operation: { phase: string; startedAt: string | null; message: string | null } | null;
+  /** The image the newest pod runs (or, with no pods, the one Argo reports). */
+  image: (ImageRef & { pr: PrRef | null; mixed: boolean }) | null;
+  /** null until the app's resource tree has been read. */
+  pods: { ready: number; total: number; restarts: number } | null;
+  /** When the newest pod started: the last rollout or restart (for a job, its last run). */
+  newestPodAt: string | null;
+  /** Problem pods (not ready, or restarting), worst first, for the list's one-line note. */
+  problem: string | null;
+}
+
+export interface ClusterPod {
+  name: string;
+  /** "Running", "CrashLoopBackOff", "Completed", … */
+  phase: string;
+  health: string | null;
+  /** "1/1" */
+  ready: string;
+  isReady: boolean;
+  restarts: number;
+  createdAt: string | null;
+  /** Owner chain kind directly above the pod: ReplicaSet, Job, … */
+  owner: string | null;
+  image: (ImageRef & { pr: PrRef | null }) | null;
+}
+
+export interface ClusterTree {
+  app: string;
+  pods: ClusterPod[];
+  deployment: { name: string; kind: string } | null;
+  /** Distinct image SHAs across pods, newest pod first. */
+  shas: string[];
+}
+
+export type StreamState = "loading" | "live" | "reconnecting" | "error";
+
+export interface ClusterAppsPayload {
+  env: ClusterEnv;
+  apps: ClusterApp[];
+  /** App names hidden from the list (saved on the server, shared by both envs). */
+  hidden: string[];
+  state: StreamState;
+  message: string | null;
+  updatedAt: string;
+}
+
+export interface ClusterTreePayload {
+  tree: ClusterTree | null;
+  state: StreamState;
+  message: string | null;
+}
+
+export interface LogLine {
+  pod: string;
+  ts: string | null;
+  text: string;
+}
+
+export interface DiffEntry {
+  kind: string;
+  name: string;
+  status: "OutOfSync" | "Missing" | "Extra";
+  /** Unified-style line diff of live → target, with unchanged runs collapsed. */
+  patch: string;
+}
+
+export interface ImageChange {
+  resource: string;
+  container: string;
+  from: (ImageRef & { pr: PrRef | null }) | null;
+  to: (ImageRef & { pr: PrRef | null }) | null;
+}
+
+export interface SyncPreview {
+  previewId: string;
+  env: ClusterEnv;
+  app: string;
+  /** Infrastructure commit the sync is pinned to. */
+  revision: string | null;
+  revisionUrl: string | null;
+  resources: DiffEntry[];
+  images: ImageChange[];
+  expiresAt: string;
+}
+
+export interface RestartPlan {
+  env: ClusterEnv;
+  app: string;
+  deployment: string;
+  pods: ClusterPod[];
+  sha: string | null;
+}
+
+export type DeployState = "live" | "rolling" | "waiting" | "replaced" | "unknown";
+
+export interface DeployTarget {
+  env: ClusterEnv;
+  app: string;
+  state: DeployState;
+  note: string;
+}
+
+export interface DeployTargetsPayload {
+  runId: number;
+  headSha: string | null;
+  targets: DeployTarget[];
+  /** Per-environment problems, e.g. "not configured". */
+  notes: string[];
 }

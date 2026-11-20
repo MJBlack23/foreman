@@ -1,6 +1,6 @@
 # Cluster page: replace k9s with an Argo-only view
 
-- Status: Draft
+- Status: Built on 2026-11-19, tested against a fake Argo only. See "As built" at the end.
 - Date: 2026-11-19
 
 ## Summary
@@ -232,7 +232,7 @@ export interface DiffEntry { kind: string; name: string; status: "OutOfSync" | "
   - Prod: the dialog shows the deployment name, its replica count, and the pods that will be replaced. Confirm sends `{ confirm: "<app>" }`, and the server checks that the name matches.
   - Staging: one click.
 - **Style.** The Staging tab and every staging dialog use a distinct accent color, and the words "STAGING" in the header. Prod dialogs say "PRODUCTION" in red.
-- **Local callers (proposed, not decided).** The Origin check stops web pages, not local processes. An agent could `curl` the preview endpoint and then the sync endpoint without ever seeing a token. The proposed guard: for prod writes, the server shows a native macOS confirmation itself (for example `osascript` `display dialog`, or a Touch ID prompt) before it calls Argo, so approval happens outside the browser and outside any agent. Until that exists, a Claude Code deny rule on `Bash(curl:*localhost:7896/api/cluster*)` helps, but it is easy to get around.
+- **Local callers.** The Origin check stops web pages, not local processes. An agent could `curl` the preview endpoint and then the sync endpoint without ever seeing a token. So for prod writes the server shows its own macOS dialog (`osascript` `display dialog`, default button Cancel, gives up after 60 seconds) before it calls Argo. Approval happens outside the browser and outside any agent. `ARGO_NATIVE_CONFIRM=0` turns it off.
 - **Audit log.** The server writes one line per write to `<dataDir>/cluster-actions.log`: time, environment, app, action, Argo response status. Tokens are never written.
 
 ### Log filter
@@ -313,3 +313,24 @@ It's a local tool. Revert the commit, or delete `argo.env` to turn the page off.
 - Stop sharing the Argo admin credential: give each person their own account and rotate the shared one. This happens in `infrastructure`.
 - Put the `svc` and `job` apps in their own Argo project, so `role:pr-dashboard` can be limited to them.
 - Kubernetes events in `AppDetail`, through `GET /api/v1/applications/{app}/events`.
+
+## As built
+
+What differs from the design above, and what is still unchecked.
+
+- **Multi-source apps.** `svc` and `job` apps have two sources (the Helm chart and the infrastructure repo), so Argo reports `status.sync.revisions`, not `status.sync.revision`. The preview stores the whole list, and the sync sends `{ revisions, sourcePositions, prune: true }`.
+- **Log events.** A failed log stream sends `fail`, not `error`, because `EventSource` uses `error` for its own connection errors. Lines arrive in batches (`lines` event, an array).
+- **Extra read routes.** `GET /api/cluster/:env/apps/:app/pods/:pod` returns a pod's container names for the logs picker, and `GET …/restart-plan` returns the pods a prod restart would replace. Deploy-run links use `GET /api/cluster/runs/:id/targets`.
+- **No snapshot change.** `GhRun` gained `headSha`, but deploy-run statuses come from their own route, so `SNAPSHOT_SCHEMA` stayed at 8.
+- **Replaced or waiting.** `deployState` asks GitHub's compare API whether a pod's SHA is newer than the run's (cached per pair).
+- **Pod counts in the list.** The Application object has no pod counts, so the watcher reads each shown app's resource tree when the app changes and every 30 seconds, 4 at a time.
+- **Restart route.** The client tries `POST …/resource/actions` with body `"restart"`, then the v2 route if the server answers 404, 405 or 501.
+- **Services and Jobs tabs.** The list has a Services tab (the default) and a Jobs tab (`?tab=jobs`), each with a count of apps that need attention. This replaces the grouped list and the "Show N more healthy apps" collapse.
+- **Hidden apps.** Any app can be hidden from the list. The names live in `<dataDir>/cluster-hidden.json` (`{ "hidden": [...] }`), one list for both environments, through `GET` and `POST /api/cluster/hidden`. Hidden apps sit in a collapsed "N hidden" section with Unhide buttons, which also says how many of them need attention. If storage needs grow, SQLite is the next step.
+- **Fake Argo.** `server/fakeArgo.ts` (`pnpm fake-argo`) serves the endpoints above with sample apps. `server/cluster.test.ts` runs against it.
+
+Not yet checked against the real clusters:
+
+- the stream message format and the pod `info` fields (open question 1)
+- the restart route on our Argo version, and whether logs need `logs, get` (open questions 1 and 2)
+- deploy-run links with a real run. None of the PRs merged in the last 24 hours built a service, so the panel had nothing to show.

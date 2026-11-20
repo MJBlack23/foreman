@@ -10,8 +10,35 @@ Needs Node 20+, pnpm, and `gh` signed in (the token comes from `gh auth token` a
 pnpm install
 pnpm start        # builds the page, then serves it and starts polling on :7896
 pnpm dev          # server with reload + Vite dev server (proxies /api to :7896)
-pnpm test         # Vitest: run matching, events, ETA math, seen diff, labels and reviews
+pnpm test         # Vitest: run matching, events, ETA math, seen diff, labels and reviews, Cluster page
 pnpm typecheck
+pnpm fake-argo    # a stand-in Argo CD API on :7899, for trying the Cluster page
+```
+
+## Cluster page (Argo CD)
+
+`/cluster` shows the Argo apps from the `svc` and `job` ApplicationSets, their pods, the commit and PR each pod runs, and live logs. It can also refresh and sync an app and restart a Deployment. It talks only to the Argo CD API, never to kubeconfig. The design is in [docs/specs/cluster-page.md](docs/specs/cluster-page.md).
+
+It needs these variables in the server's environment. Start it through Doppler so no secret sits in a file:
+
+```bash
+doppler run --project matt-pr-dashboard --config prd -- pnpm start
+```
+
+`ARGO_PRD_URL`, `ARGO_PRD_TOKEN`, `ARGO_STG_URL`, `ARGO_STG_TOKEN`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`. A missing or empty URL or token turns that tab into a "not set up" note, and the rest of the dashboard works as before. Without Doppler, the server also reads them from `argo.env` in the data folder (see Settings).
+
+Services and Jobs are separate tabs. Hide an app with the eye button on its row; hidden names are saved in `cluster-hidden.json` in the data folder and apply to both environments.
+
+Prod sync and restart ask twice: once in the page, then in a macOS dialog the server shows itself, so a local script can't make a prod change through the API alone. `ARGO_NATIVE_CONFIRM=0` turns the macOS dialog off. Every write is logged to `cluster-actions.log` in the data folder.
+
+To try it without a cluster:
+
+```bash
+pnpm fake-argo
+```
+
+```bash
+ARGO_PRD_URL=http://127.0.0.1:7899 ARGO_PRD_TOKEN=fake-token ARGO_NATIVE_CONFIRM=0 pnpm start
 ```
 
 ## Settings

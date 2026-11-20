@@ -40,6 +40,7 @@ export function run(over: Partial<GhRun> = {}): GhRun {
     id: 44149567802,
     runNumber: 2860,
     headBranch: "claude/gifted-babbage-lr6mq4",
+    headSha: null,
     event: "pull_request",
     status: "in_progress",
     conclusion: null,

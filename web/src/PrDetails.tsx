@@ -2,6 +2,7 @@ import { computeEta, formatDuration, formatMinutes, formatTimeLeft } from "../..
 import { isRunActive } from "../../core/match.ts";
 import { formatAgo } from "../../core/pr.ts";
 import type { GhJob, PrView, RunView } from "../../core/types.ts";
+import { DeployTargets } from "./DeployTargets.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { Ext, hhmm } from "./ui.tsx";
 
@@ -37,6 +38,7 @@ export function PrDetails({ pr, typicalMs, now }: { pr: PrView; typicalMs: numbe
       </section>
 
       {run ? <RunBody run={run} typicalMs={typicalMs} now={now} /> : <NoRunBody pr={pr} now={now} />}
+      {run && pr.mergedAt && <DeployTargets runId={run.id} done={!isRunActive(run) && run.conclusion === "success"} />}
 
       <div className="actions">
         {run && (

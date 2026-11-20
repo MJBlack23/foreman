@@ -36,6 +36,8 @@ export class GitHub {
         warn: console.warn,
         error: (msg: unknown, ...rest: unknown[]) => {
           if (typeof msg === "string" && / - 304 with id /.test(msg)) return;
+          // SHA → PR lookups for commits not in this repo are expected misses.
+          if (typeof msg === "string" && /\/commits\/[0-9a-f]{40}\/pulls - 422 /.test(msg)) return;
           console.error(msg, ...rest);
         },
       },
@@ -243,6 +245,7 @@ interface RawRun {
   id: number;
   run_number: number;
   head_branch: string | null;
+  head_sha?: string;
   event: string;
   status: string | null;
   conclusion: string | null;
@@ -269,6 +272,7 @@ function toRun(r: RawRun): GhRun {
     id: r.id,
     runNumber: r.run_number,
     headBranch: r.head_branch,
+    headSha: r.head_sha ?? null,
     event: r.event,
     status: r.status ?? "queued",
     conclusion: r.conclusion,

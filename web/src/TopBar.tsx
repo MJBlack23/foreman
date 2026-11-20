@@ -13,6 +13,14 @@ export function TopBar({ snapshot, connected, route }: { snapshot: Snapshot | nu
           <span className="logo" aria-hidden />
           PR Dashboard
         </RouteLink>
+        <nav className="topnav" aria-label="Pages">
+          <RouteLink to="dashboard" className={route === "dashboard" ? "active" : ""} aria-current={route === "dashboard" ? "page" : undefined}>
+            PRs
+          </RouteLink>
+          <RouteLink to="cluster" className={route === "cluster" ? "active" : ""} aria-current={route === "cluster" ? "page" : undefined}>
+            Cluster
+          </RouteLink>
+        </nav>
         {snapshot && <span className="repo">{snapshot.repo}</span>}
 
         <div className="topbar-right">
