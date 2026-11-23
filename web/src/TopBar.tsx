@@ -47,6 +47,9 @@ export function TopBar({
             Night Shift
             {nightShift && <span className={`ns-dot ${nightShift}`} aria-label={NS_DOT[nightShift]} role="img" />}
           </RouteLink>
+          <RouteLink to="ideas" className={route === "ideas" ? "active" : ""} aria-current={route === "ideas" ? "page" : undefined}>
+            Ideas
+          </RouteLink>
         </nav>
         {snapshot && <span className="repo">{snapshot.repo}</span>}
 

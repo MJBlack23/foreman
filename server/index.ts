@@ -9,6 +9,7 @@ import { clusterRoutes, ClusterService, dashboardOrigins, macConfirm } from "./c
 import { loadArgoConfig, loadConfig } from "./config.ts";
 import { getSetting, importLegacy, openDb } from "./db.ts";
 import { ghToken, GitHub } from "./github.ts";
+import { ideaRoutes, IdeasStore } from "./ideas.ts";
 import { sendNotification } from "./notify.ts";
 import { loadNightShiftConfig, NightShiftStore, NightShiftWatcher, nightShiftRoutes } from "./nightShift.ts";
 import { Poller } from "./poller.ts";
@@ -28,6 +29,7 @@ const poller = new Poller(gh, store, prefs, (n) => sendNotification(n, config.so
 const argoConfig = loadArgoConfig(config.dataDir);
 const origins = dashboardOrigins(config.port, [Number(process.env.VITE_PORT ?? 5173)]);
 const nativeConfirm = process.env.ARGO_NATIVE_CONFIRM === "0" ? undefined : macConfirm;
+const ideas = new IdeasStore(db);
 const nightShift = new NightShiftWatcher({
   config: loadNightShiftConfig(),
   store: new NightShiftStore(db),
@@ -63,11 +65,15 @@ app.get("/api/events", (c) =>
   streamSSE(c, async (stream) => {
     await stream.writeSSE({ event: "snapshot", data: JSON.stringify(poller.snapshot()) });
     await stream.writeSSE({ event: "nightshift", data: JSON.stringify(nightShift.state()) });
+    await stream.writeSSE({ event: "ideas", data: JSON.stringify(ideas.list()) });
     const unsubscribe = poller.subscribe((s) => {
       stream.writeSSE({ event: "snapshot", data: JSON.stringify(s) }).catch(() => {});
     });
     const unsubscribeNs = nightShift.subscribe((s) => {
       stream.writeSSE({ event: "nightshift", data: JSON.stringify(s) }).catch(() => {});
+    });
+    const unsubscribeIdeas = ideas.subscribe((list) => {
+      stream.writeSSE({ event: "ideas", data: JSON.stringify(list) }).catch(() => {});
     });
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: "ping", data: "" }).catch(() => {});
@@ -76,6 +82,7 @@ app.get("/api/events", (c) =>
       stream.onAbort(() => {
         unsubscribe();
         unsubscribeNs();
+        unsubscribeIdeas();
         clearInterval(heartbeat);
         resolve();
       });
@@ -115,6 +122,7 @@ app.post("/api/viewed", async (c) => {
 
 clusterRoutes(app, cluster);
 nightShiftRoutes(app, nightShift, origins);
+ideaRoutes(app, ideas, origins);
 
 // The page polls this and reloads itself when `vite build --watch` writes a new build.
 app.get("/api/build", (c) => {

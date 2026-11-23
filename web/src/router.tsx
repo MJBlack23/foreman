@@ -1,6 +1,6 @@
 import { type AnchorHTMLAttributes, useEffect, useState } from "react";
 
-export type Route = "dashboard" | "notifications" | "cluster" | "night-shift";
+export type Route = "dashboard" | "notifications" | "cluster" | "night-shift" | "ideas";
 
 const toRoute = (path: string): Route =>
   path.startsWith("/notifications")
@@ -9,7 +9,9 @@ const toRoute = (path: string): Route =>
       ? "cluster"
       : path.startsWith("/night-shift")
         ? "night-shift"
-        : "dashboard";
+        : path.startsWith("/ideas")
+          ? "ideas"
+          : "dashboard";
 const toPath = (r: Route) => (r === "dashboard" ? "/" : `/${r}`);
 
 /** Small router on the History API; the server serves index.html for any path. */

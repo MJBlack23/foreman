@@ -68,6 +68,31 @@ const MIGRATIONS: string[] = [
     );
     CREATE INDEX night_shift_ticks_at ON night_shift_ticks (at);
   `,
+  /* 3 */ `
+    -- Idea board: things to do someday that aren't in Linear yet.
+    CREATE TABLE ideas (
+      id         INTEGER PRIMARY KEY,
+      title      TEXT NOT NULL,
+      pitch      TEXT NOT NULL DEFAULT '',
+      body       TEXT NOT NULL DEFAULT '',  -- markdown
+      stage      TEXT NOT NULL DEFAULT 'spark'
+                 CHECK (stage IN ('spark', 'shaping', 'waiting', 'ready', 'line', 'shelved')),
+      waiting_on TEXT NOT NULL DEFAULT '',
+      tags       TEXT NOT NULL DEFAULT '[]',  -- JSON array
+      link       TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    -- A running thread on each idea, from Matt or from Claude.
+    CREATE TABLE idea_notes (
+      id      INTEGER PRIMARY KEY,
+      idea_id INTEGER NOT NULL REFERENCES ideas (id),
+      author  TEXT NOT NULL CHECK (author IN ('matt', 'claude')),
+      body    TEXT NOT NULL,
+      at      TEXT NOT NULL
+    );
+    CREATE INDEX idea_notes_idea ON idea_notes (idea_id, at);
+  `,
 ];
 
 /** node:sqlite warns that it's experimental on first load; that's noise for a local tool. */

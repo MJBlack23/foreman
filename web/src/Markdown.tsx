@@ -2,15 +2,18 @@ import type { ReactNode } from "react";
 import { Ext } from "./ui.tsx";
 
 /**
- * Just enough markdown for a PR summary: paragraphs, "- " / "* " / "1. " lists,
+ * Just enough markdown for a PR summary or an idea: "#" headings, paragraphs, "- " / "* " / "1. " lists,
  * `code`, **bold**, *italic* and [links](https://…). Builds React nodes, never HTML.
  */
 export function Markdown({ text }: { text: string }) {
-  const blocks = text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  // A heading is always its own block.
+  const blocks = text.replace(/^(#{1,6}\s.*)$/gm, "\n$1\n").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
   return (
     <div className="md">
       {blocks.map((block, i) => {
         const lines = block.split("\n");
+        const heading = /^#{1,6}\s+(.*?)\s*#*$/.exec(block);
+        if (heading && lines.length === 1) return <h4 key={i}>{inline(heading[1]!)}</h4>;
         const bullet = /^\s*[-*]\s+/;
         const numbered = /^\s*\d+[.)]\s+/;
         if (lines.every((l) => bullet.test(l))) {

@@ -62,6 +62,14 @@ It reads two variables from Doppler project `foreman` (add them as references to
 
 The health check needs neither.
 
+## Ideas page
+
+`/ideas` is a board for things I want to do someday but haven't planned or put in Linear: not a todo list. Each idea has a title, a pitch, a markdown "thinking so far", a stage (Spark, Shaping, Waiting on something, Ready for the line, On the line, Shelved), what it's waiting on, tags, a link once it's in Linear, and a thread of notes from me or Claude.
+
+Claude reads and writes the same ideas through `/api/ideas` with curl; the [idea-board skill](.claude/skills/idea-board/SKILL.md) says how. "Talk to Claude" on an idea copies a prompt to paste into any Claude Code session. Changes show up on the page live.
+
+Writes from a browser are only accepted from the dashboard's own origin; local clients that send no `Origin` (curl) are allowed. Every write must be `content-type: application/json`.
+
 ## Data
 
 Everything the app remembers is in `foreman.db`, a SQLite database in the project root (git-ignored). `FOREMAN_DB` points it somewhere else. It uses Node's built-in `node:sqlite`, so there's nothing native to install.
@@ -72,6 +80,8 @@ Everything the app remembers is in `foreman.db`, a SQLite database in the projec
 | `seen` | Event ids already notified (so a restart doesn't re-notify) and ids viewed in the page (others show "New"). Ids older than 7 days are pruned. |
 | `hidden_apps` | Apps hidden from the Cluster list |
 | `cluster_actions` | Every sync and restart, with Argo's answer |
+| `night_shift_*` | Night Shift health checks, status polls and ticks (7 days) |
+| `ideas`, `idea_notes` | The Ideas board and each idea's notes |
 
 `sound` is `false` (default, silent), `true` (macOS default sound) or a sound name such as `"Glass"`. There's no settings page yet, so set it with `sqlite3 foreman.db "INSERT OR REPLACE INTO settings VALUES ('sound', '\"Glass\"')"`, or override it with env vars: `MERGE_WATCH_SOUND` (`0`, `1` or a sound name) and `PORT`.
 

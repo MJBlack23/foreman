@@ -3,6 +3,7 @@ import { ClusterPage } from "./ClusterPage.tsx";
 import { isRunActive } from "../../core/match.ts";
 import { SNAPSHOT_SCHEMA } from "../../core/types.ts";
 import { useBuildReload, useNow, useSnapshot } from "./hooks.ts";
+import { IdeasPage } from "./IdeasPage.tsx";
 import { NightShiftPage } from "./NightShiftPage.tsx";
 import { NotificationsPage } from "./NotificationsPage.tsx";
 import { PrTabs } from "./PrList.tsx";
@@ -12,7 +13,7 @@ import { useRoute } from "./router.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 export function App() {
-  const { snapshot, nightShift, connected } = useSnapshot();
+  const { snapshot, nightShift, ideas, connected } = useSnapshot();
   const route = useRoute();
   const now = useNow();
   useBuildReload();
@@ -22,6 +23,8 @@ export function App() {
     body = <ClusterPage now={now} />;
   } else if (route === "night-shift") {
     body = <NightShiftPage state={nightShift} connected={connected} now={now} />;
+  } else if (route === "ideas") {
+    body = <IdeasPage ideas={ideas} connected={connected} now={now} />;
   } else if (snapshot && snapshot.schema !== SNAPSHOT_SCHEMA) {
     body = (
       <div className="banner">
@@ -48,7 +51,7 @@ export function App() {
 
   const activeRuns = snapshot?.prs.filter((p) => p.run && isRunActive(p.run)).length ?? 0;
   useEffect(() => {
-    if (route === "cluster" || route === "night-shift") return;
+    if (route === "cluster" || route === "night-shift" || route === "ideas") return;
     document.title = activeRuns ? `(${activeRuns} building) Foreman` : "Foreman";
   }, [activeRuns, route]);
 
@@ -61,7 +64,7 @@ export function App() {
         route={route}
       />
       <main>
-        {snapshot?.lastError && route !== "cluster" && route !== "night-shift" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
+        {snapshot?.lastError && route !== "cluster" && route !== "night-shift" && route !== "ideas" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
         {body}
       </main>
     </>
