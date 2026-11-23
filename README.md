@@ -66,7 +66,7 @@ The health check needs neither.
 
 `/ideas` is a board for things I want to do someday but haven't planned or put in Linear: not a todo list. Each idea has a title, a pitch, a markdown "thinking so far", a stage (Spark, Shaping, Waiting on something, Ready for the line, On the line, Shelved), what it's waiting on, tags, a link once it's in Linear, and a thread of notes from me or Claude.
 
-Claude reads and writes the same ideas through `/api/ideas` with curl; the [idea-board skill](.claude/skills/idea-board/SKILL.md) says how. "Talk to Claude" on an idea copies a prompt to paste into any Claude Code session. Changes show up on the page live.
+Claude reads and writes the same ideas through `/api/ideas` with curl; the [idea-board skill](.claude/skills/idea-board/SKILL.md) says how. "Talk to Claude" on an idea copies a `/grill-me` prompt to paste into any Claude Code session. Changes show up on the page live.
 
 Writes from a browser are only accepted from the dashboard's own origin; local clients that send no `Origin` (curl) are allowed. Every write must be `content-type: application/json`.
 

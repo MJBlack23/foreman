@@ -51,7 +51,7 @@ For a long `body` or note, build the JSON with `jq -n --arg body "$text" '{body:
 ## How to work an idea
 
 1. **Capture fast.** When Matt mentions something he wants to do someday, capture it with a title, a pitch in his words, and tags. Don't plan it. If it obviously depends on other work, set `waiting` and `waitingOn`. Tell him the id.
-2. **Thinking it through** (Matt pasted the "Talk to Claude" prompt, or asked): read the idea and its notes first. Then ask questions one at a time, the way the grilling skill does, and check the codebase where that answers a question better than asking. Update `body` as the picture sharpens and move `stage` to `shaping`.
+2. **Thinking it through** (Matt pasted the "Talk to Claude" prompt, which runs `/grill-me`, or asked): read the idea and its notes first. Then ask questions one at a time, the way the grilling skill does, and check the codebase where that answers a question better than asking. Update `body` as the picture sharpens and move `stage` to `shaping`.
 3. **Before you finish**, PATCH the `body` so it reflects where things stand, and add one note summarising this conversation (decisions, open questions, next step). The page updates live.
 4. **Ready for the line**: when the approach is clear, set `ready`. Only create Linear issues if Matt asks; then set `stage: "line"` and `link`.
 

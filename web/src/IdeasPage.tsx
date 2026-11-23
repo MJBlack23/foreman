@@ -17,10 +17,10 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   return out as T;
 }
 
-/** The prompt "Talk to Claude" copies: enough for any Claude Code session to find the idea. */
+/** The prompt "Talk to Claude" copies: runs /grill-me on the idea in any Claude Code session. */
 const claudePrompt = (idea: Idea) =>
-  `Let's think through idea #${idea.id} on my Foreman idea board ("${idea.title}"). ` +
-  `Use the idea-board skill to read it, then grill me on it. Write what we decide back to the idea as you go.`;
+  `/grill-me one-question-at-a-time Let's think through idea #${idea.id} on my Foreman idea board ("${idea.title}"). ` +
+  `Use the idea-board skill to read it first. Write what we decide back to the idea as you go.`;
 
 /** /ideas: things Matt wants to do someday that aren't on the assembly line (Linear) yet. */
 export function IdeasPage({ ideas, connected, now }: { ideas: Idea[] | null; connected: boolean; now: number }) {
