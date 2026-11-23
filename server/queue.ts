@@ -49,8 +49,6 @@ export interface QueueDeps {
   /** The PR poller's latest snapshot: its open PRs count as "has a PR" too. */
   prs: () => Snapshot["prs"];
   branchesMatching: (terms: string[]) => Promise<Map<string, BranchInfo[]>>;
-  /** Native macOS dialog before handing an issue to night-shift; undefined skips it (tests). */
-  confirm?: (title: string, message: string, button: string) => Promise<boolean>;
   fetch?: typeof fetch;
   now?: () => number;
 }
@@ -69,6 +67,7 @@ export class QueueWatcher {
   private listeners = new Set<Listener>();
   private lastSent = "";
   private sending = new Set<string>();
+  private me: { id: string; name: string } | null = null;
   private labelIds = new Map<string, string>();
   private todoStates = new Map<string, { id: string; name: string; type: string; color: string }>();
   private fetch: typeof fetch;
@@ -154,10 +153,11 @@ export class QueueWatcher {
   }
 
   /**
-   * Add the team's `night-shift-ready` label to a queued issue, after a native
-   * confirm. night-shift picks labelled tickets up on its next tick.
+   * Hand a queued issue to night-shift in one Linear write: assign it to me,
+   * move it to the team's To Do, and add the team's `night-shift-ready` label.
+   * night-shift picks labelled tickets up on its next tick.
    */
-  async sendToNightShift(issueId: string): Promise<{ result: "sent" | "cancelled" | "already" | "busy"; movedTo?: string }> {
+  async sendToNightShift(issueId: string): Promise<{ result: "sent" | "already" | "busy"; movedTo?: string }> {
     const key = this.deps.apiKey;
     if (!key) throw new HttpError(400, "LINEAR_API_KEY isn't set.");
     const issue = this.issues.find((i) => i.id === issueId);
@@ -167,44 +167,27 @@ export class QueueWatcher {
     this.sending.add(issueId);
     try {
       const labelId = await this.nightShiftLabel(key, issue.team);
-      // night-shift skips blocked tickets, so a blocked one goes back to To Do.
-      const blocked = isBlocked(issue.state);
-      const todo = blocked ? await this.todoState(key, issue.team!) : null;
-      if (this.deps.confirm) {
-        const ok = await this.deps.confirm(
-          "Send to Night-Shift",
-          `Send ${issue.id} to night-shift?\n\n“${issue.title}”\n\nThis adds the ${NIGHT_SHIFT_LABEL} label in Linear` +
-            (todo ? ` and moves it from ${issue.state.name} to ${todo.name}` : "") +
-            `, and night-shift picks the ticket up on its next tick.`,
-          "Send",
-        );
-        if (!ok) return { result: "cancelled" };
-      }
-      // State first, so a tick between the two writes never sees a labelled but blocked ticket.
-      if (todo) {
-        const moved = await this.gql<{ issueUpdate: { success: boolean } }>(
-          key,
-          `mutation($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }`,
-          { id: issue.linearId, stateId: todo.id },
-        );
-        if (!moved.issueUpdate.success) throw new Error(`Linear didn't move ${issue.id} to ${todo.name}.`);
-        issue.state = { name: todo.name, type: todo.type, color: todo.color };
-      }
-      const res = await this.gql<{ issueAddLabel: { success: boolean } }>(
+      const todo = await this.todoState(key, issue.team!);
+      const me = await this.viewer(key);
+      // One issueUpdate, so Linear applies all three or none: a tick never sees a half-sent ticket.
+      const res = await this.gql<{ issueUpdate: { success: boolean } }>(
         key,
-        `mutation($id: String!, $labelId: String!) { issueAddLabel(id: $id, labelId: $labelId) { success } }`,
-        { id: issue.linearId, labelId },
+        `mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }`,
+        { id: issue.linearId, input: { assigneeId: me.id, stateId: todo.id, addedLabelIds: [labelId] } },
       );
-      if (!res.issueAddLabel.success) throw new Error("Linear didn't add the label.");
+      if (!res.issueUpdate.success) throw new Error(`Linear didn't update ${issue.id}.`);
+      const moved = issue.state.name !== todo.name;
+      issue.state = { name: todo.name, type: todo.type, color: todo.color };
+      issue.assignee = { name: me.name, isMe: true };
       issue.labels = [...issue.labels, NIGHT_SHIFT_LABEL];
       this.emit();
-      return todo ? { result: "sent", movedTo: todo.name } : { result: "sent" };
+      return moved ? { result: "sent", movedTo: todo.name } : { result: "sent" };
     } catch (e) {
       if (e instanceof HttpError) throw e;
       const msg = ((e as Error).message ?? String(e)).replaceAll(key, "[redacted]");
       // A read-only key gets a permission error here.
       throw new HttpError(502, /permission|forbidden|scope|not authori[sz]ed/i.test(msg)
-        ? `${msg}. The Linear key needs Write access to add labels: make a new key with Write and update LINEAR_API_KEY in Doppler.`
+        ? `${msg}. The Linear key needs Write access to update issues: make a new key with Write and update LINEAR_API_KEY in Doppler.`
         : msg);
     } finally {
       this.sending.delete(issueId);
@@ -225,6 +208,14 @@ export class QueueWatcher {
     if (!id) throw new HttpError(400, `Team ${team} has no ${NIGHT_SHIFT_LABEL} label in Linear.`);
     this.labelIds.set(team, id);
     return id;
+  }
+
+  /** The Linear user the API key belongs to: night-shift tickets get assigned to them. */
+  private async viewer(key: string): Promise<{ id: string; name: string }> {
+    if (this.me) return this.me;
+    const res = await this.gql<{ viewer: { id: string; name: string; displayName: string } }>(key, `query { viewer { id name displayName } }`, {});
+    this.me = { id: res.viewer.id, name: res.viewer.displayName || res.viewer.name };
+    return this.me;
   }
 
   /** The team's To Do: the unstarted state named "To Do…", else its first unstarted state. */
@@ -316,9 +307,6 @@ export function queueRoutes(app: Hono, svc: QueueWatcher, origins: string[]) {
     }
   });
 }
-
-/** The same test the Blocked lane uses. */
-const isBlocked = (state: { name: string; type: string }) => state.type === "started" && /block/i.test(state.name);
 
 class HttpError extends Error {
   constructor(

@@ -72,9 +72,9 @@ export function QueuePage({ state, connected, now }: { state: QueueState | null;
       const body = (await res.json().catch(() => null)) as { result?: string; movedTo?: string; error?: string } | null;
       if (!res.ok) throw new Error(body?.error ?? res.statusText);
       if (body?.result === "sent")
-        toasts.push(`Sent ${i.id} to night-shift${body.movedTo ? ` and moved it to ${body.movedTo}` : ""}. It picks it up on the next tick.`);
+        toasts.push(`Sent ${i.id} to night-shift: assigned to you${body.movedTo ? `, moved to ${body.movedTo}` : ""} and labelled. It picks it up on the next tick.`);
       else if (body?.result === "already") toasts.push(`${i.id} already has ${NIGHT_SHIFT_LABEL}.`);
-      else if (body?.result === "busy") toasts.push("Waiting on the confirm dialog from an earlier click.");
+      else if (body?.result === "busy") toasts.push(`${i.id} is already being sent.`);
     } catch (e) {
       toasts.push(`Couldn’t send ${i.id}: ${(e as Error).message}`, "bad");
     } finally {

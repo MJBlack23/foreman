@@ -36,23 +36,22 @@ function fakeLinear(opts: { nodes: unknown[]; mutationError?: string }) {
         },
       });
     }
-    if (query.includes("issueUpdate")) return json({ data: { issueUpdate: { success: true } } });
-    if (query.includes("issueAddLabel")) {
-      return opts.mutationError ? json({ errors: [{ message: opts.mutationError }] }) : json({ data: { issueAddLabel: { success: true } } });
+    if (query.includes("viewer")) return json({ data: { viewer: { id: "user-me", name: "Matt Black", displayName: "matt" } } });
+    if (query.includes("issueUpdate")) {
+      return opts.mutationError ? json({ errors: [{ message: opts.mutationError }] }) : json({ data: { issueUpdate: { success: true } } });
     }
     return json({ data: { issues: { pageInfo: { hasNextPage: false, endCursor: "" }, nodes: opts.nodes } } });
   }) as unknown as typeof globalThis.fetch;
   return { fetch: fakeFetch, calls };
 }
 
-async function watcher(opts: Parameters<typeof fakeLinear>[0], confirm?: () => Promise<boolean>) {
+async function watcher(opts: Parameters<typeof fakeLinear>[0]) {
   const linear = fakeLinear(opts);
   const w = new QueueWatcher({
     apiKey: "lin_api_secret",
     prs: () => [],
     branchesMatching: async () => new Map(),
     fetch: linear.fetch,
-    confirm,
   });
   await w.poll();
   w.stop();
@@ -60,26 +59,49 @@ async function watcher(opts: Parameters<typeof fakeLinear>[0], confirm?: () => P
 }
 
 describe("sendToNightShift", () => {
-  it("adds the issue's team label by UUID and shows it at once", async () => {
-    const { w, calls } = await watcher({ nodes: [issueNode("GRO-1", "GRO")] });
-    expect(await w.sendToNightShift("GRO-1")).toEqual({ result: "sent" });
+  const sendWrites = (calls: { query: string; variables: Record<string, unknown> }[]) => calls.filter((c) => c.query.startsWith("mutation"));
+
+  it("assigns to me, moves to To Do and adds the team label in one write", async () => {
+    const unassigned = { ...issueNode("GRO-1", "GRO", [], { name: "Backlog", type: "backlog", color: "#ddd" }), assignee: null };
+    const { w, calls } = await watcher({ nodes: [unassigned] });
+    expect(await w.sendToNightShift("GRO-1")).toEqual({ result: "sent", movedTo: "To Do (Sprint Backlog)" });
     const lookup = calls.find((c) => c.query.includes("issueLabels"))!;
     expect(lookup.variables).toEqual({ name: "night-shift-ready", team: "GRO" });
-    const mutation = calls.find((c) => c.query.includes("issueAddLabel"))!;
-    expect(mutation.variables).toEqual({ id: "uuid-GRO-1", labelId: "label-GRO" });
-    expect(w.state().items[0]!.labels).toContain("night-shift-ready");
+    const writes = sendWrites(calls);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.query).toContain("issueUpdate");
+    expect(writes[0]!.variables).toEqual({
+      id: "uuid-GRO-1",
+      input: { assigneeId: "user-me", stateId: "todo-GRO", addedLabelIds: ["label-GRO"] },
+    });
+    const item = w.state().items[0]!;
+    expect(item.labels).toContain("night-shift-ready");
+    expect(item.state.name).toBe("To Do (Sprint Backlog)");
+    expect(item.assignee).toEqual({ name: "matt", isMe: true });
   });
 
-  it("does nothing when the confirm is cancelled", async () => {
-    const { w, calls } = await watcher({ nodes: [issueNode("PLAT-1", "PLAT")] }, async () => false);
-    expect(await w.sendToNightShift("PLAT-1")).toEqual({ result: "cancelled" });
-    expect(calls.some((c) => c.query.includes("issueAddLabel"))).toBe(false);
+  it("moves a blocked or started ticket back to To Do", async () => {
+    for (const state of [
+      { name: "Blocked", type: "started", color: "#f00" },
+      { name: "In Progress", type: "started", color: "#0f0" },
+    ]) {
+      const { w, calls } = await watcher({ nodes: [issueNode("PLAT-7", "PLAT", [], state)] });
+      expect(await w.sendToNightShift("PLAT-7")).toEqual({ result: "sent", movedTo: "To Do (Sprint Backlog)" });
+      expect(sendWrites(calls)[0]!.variables.input).toMatchObject({ stateId: "todo-PLAT" });
+      expect(w.state().items[0]!.ownLane).toBe("next");
+    }
+  });
+
+  it("doesn't report a move when it's already in To Do", async () => {
+    const todo = { name: "To Do (Sprint Backlog)", type: "unstarted", color: "#bbb" };
+    const { w } = await watcher({ nodes: [issueNode("PLAT-8", "PLAT", [], todo)] });
+    expect(await w.sendToNightShift("PLAT-8")).toEqual({ result: "sent" });
   });
 
   it("skips issues that already have the label", async () => {
     const { w, calls } = await watcher({ nodes: [issueNode("PLAT-1", "PLAT", ["night-shift-ready"])] });
     expect(await w.sendToNightShift("PLAT-1")).toEqual({ result: "already" });
-    expect(calls.some((c) => c.query.includes("issueAddLabel"))).toBe(false);
+    expect(sendWrites(calls)).toHaveLength(0);
   });
 
   it("refuses issues that aren't queued", async () => {
@@ -87,33 +109,9 @@ describe("sendToNightShift", () => {
     await expect(w.sendToNightShift("PLAT-404")).rejects.toThrow("isn't in the queue");
   });
 
-  it("explains a read-only key", async () => {
+  it("explains a read-only key and changes nothing locally", async () => {
     const { w } = await watcher({ nodes: [issueNode("PLAT-1", "PLAT")], mutationError: "Forbidden: insufficient permission" });
     await expect(w.sendToNightShift("PLAT-1")).rejects.toThrow("needs Write access");
-  });
-
-  it("moves a blocked ticket to To Do before labelling it", async () => {
-    const blocked = { name: "Blocked", type: "started", color: "#f00" };
-    const { w, calls } = await watcher({ nodes: [issueNode("PLAT-7", "PLAT", [], blocked)] });
-    expect(await w.sendToNightShift("PLAT-7")).toEqual({ result: "sent", movedTo: "To Do (Sprint Backlog)" });
-    const writes = calls.filter((c) => c.query.startsWith("mutation"));
-    expect(writes.map((c) => (c.query.includes("issueUpdate") ? "move" : "label"))).toEqual(["move", "label"]);
-    expect(writes[0]!.variables).toEqual({ id: "uuid-PLAT-7", stateId: "todo-PLAT" });
-    const item = w.state().items[0]!;
-    expect(item.state.name).toBe("To Do (Sprint Backlog)");
-    expect(item.ownLane).toBe("next");
-  });
-
-  it("leaves other states alone", async () => {
-    const { w, calls } = await watcher({ nodes: [issueNode("PLAT-8", "PLAT", [], { name: "In Progress", type: "started", color: "#0f0" })] });
-    expect(await w.sendToNightShift("PLAT-8")).toEqual({ result: "sent" });
-    expect(calls.some((c) => c.query.includes("workflowStates") || c.query.includes("issueUpdate"))).toBe(false);
-  });
-
-  it("doesn't move anything when the confirm is cancelled", async () => {
-    const blocked = { name: "Blocked", type: "started", color: "#f00" };
-    const { w, calls } = await watcher({ nodes: [issueNode("PLAT-9", "PLAT", [], blocked)] }, async () => false);
-    expect(await w.sendToNightShift("PLAT-9")).toEqual({ result: "cancelled" });
-    expect(calls.some((c) => c.query.startsWith("mutation"))).toBe(false);
+    expect(w.state().items[0]!.labels).not.toContain("night-shift-ready");
   });
 });
