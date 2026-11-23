@@ -22,10 +22,11 @@ export function QueuePage({ state, connected, now }: { state: QueueState | null;
   const collapsed = useCollapsed();
   const [sending, setSending] = useState<Set<string>>(new Set());
 
-  const mine = state?.items.filter((i) => i.via === "assigned").length ?? 0;
+  // Same count as the nav pill: blocked tickets waiting on me.
+  const blocked = state?.blocked.length ?? 0;
   useEffect(() => {
-    document.title = mine ? `(${mine}) Queue · Foreman` : "Queue · Foreman";
-  }, [mine]);
+    document.title = blocked ? `(${blocked}) Queue · Foreman` : "Queue · Foreman";
+  }, [blocked]);
 
   if (!state) return <p className="muted">{connected ? "Loading…" : "Connecting to the Foreman server…"}</p>;
 
@@ -119,6 +120,28 @@ export function QueuePage({ state, connected, now }: { state: QueueState | null;
       </div>
 
       {state.error && <div className="banner">Linear poll failed: {state.error}</div>}
+
+      {state.blocked.length > 0 && (
+        <div className="banner warn blocked-banner" role="status">
+          <strong>
+            {state.blocked.length === 1 ? "1 ticket is" : `${state.blocked.length} tickets are`} blocked, waiting on you
+          </strong>
+          <ul>
+            {state.blocked.map((b) => (
+              <li key={b.id}>
+                <a href={b.url} target="_blank" rel="noreferrer">
+                  {b.id}
+                </a>
+                <span className="blocked-title">{b.title}</span>
+                <span className="muted small">
+                  {b.state}
+                  {b.hasPr ? " · has a PR" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {hasProject && (
         <div className="queue-filter" role="group" aria-label="Show">

@@ -1,5 +1,8 @@
 import type { Hono } from "hono";
 import {
+  BLOCKED_SEEN_PREFIX,
+  blockedAlerts,
+  blockedOnMe,
   type BranchInfo,
   buildQueue,
   type LinearIssue,
@@ -9,6 +12,7 @@ import {
   NIGHT_SHIFT_LABEL,
   type QueueState,
 } from "../core/queue.ts";
+import type { PlannedNotification } from "../core/seen.ts";
 import type { Snapshot } from "../core/types.ts";
 import { originAllowed } from "./cluster.ts";
 
@@ -49,6 +53,10 @@ export interface QueueDeps {
   /** The PR poller's latest snapshot: its open PRs count as "has a PR" too. */
   prs: () => Snapshot["prs"];
   branchesMatching: (terms: string[]) => Promise<Map<string, BranchInfo[]>>;
+  /** Where "ticket moved to Blocked" alerts go; without both, no alerts (tests). */
+  seen?: { notifiedIds(): Set<string>; syncNotified(prefix: string, ids: string[]): void };
+  notify?: (n: PlannedNotification) => void;
+  dashboardUrl?: string;
   fetch?: typeof fetch;
   now?: () => number;
 }
@@ -111,11 +119,34 @@ export class QueueWatcher {
       configured: this.configured,
       items,
       withPr,
+      blocked: blockedOnMe(this.issues, openPrTickets),
       polledAt: this.polledAt,
       nextPollAt: this.nextMs ? new Date(this.nextMs).toISOString() : null,
       polling: this.polling,
       error: this.error,
     };
+  }
+
+  /**
+   * Notify when a ticket assigned to me is in a Blocked state and hasn't been
+   * alerted yet, whether or not it has a PR. After a restart, several at once
+   * collapse into one notification.
+   */
+  private alertBlocked(firstPoll: boolean) {
+    const { seen, notify } = this.deps;
+    if (!seen || !notify) return;
+    const { fresh, ids } = blockedAlerts(this.issues, seen.notifiedIds());
+    seen.syncNotified(BLOCKED_SEEN_PREFIX, ids);
+    if (firstPoll && fresh.length > 1) {
+      notify({
+        kind: "summary",
+        title: `${fresh.length} of your tickets are blocked`,
+        message: fresh.map((i) => i.id).join(", "),
+        url: `${this.deps.dashboardUrl ?? ""}/queue`,
+      });
+      return;
+    }
+    for (const i of fresh) notify({ kind: "summary", title: `${i.id} moved to ${i.state.name}`, message: i.title, url: i.url });
   }
 
   /** Push the state if it changed, e.g. after the PR poller sees a new PR. */
@@ -132,6 +163,7 @@ export class QueueWatcher {
     try {
       this.issues = await this.fetchIssues(this.deps.apiKey);
       this.error = null;
+      this.alertBlocked(!this.polledAt);
       this.polledAt = new Date(this.now()).toISOString();
       try {
         this.branches = await this.findBranches();

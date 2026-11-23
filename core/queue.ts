@@ -88,11 +88,22 @@ export interface QueueItem extends LinearIssue {
   stale: boolean;
 }
 
+/** A ticket of mine sitting in a Blocked state. */
+export interface BlockedTicket {
+  id: string;
+  title: string;
+  url: string;
+  state: string;
+  hasPr: boolean;
+}
+
 export interface QueueState {
   configured: boolean;
   items: QueueItem[];
   /** Issues left out because a PR is open for them. */
   withPr: number;
+  /** Tickets assigned to me in a Blocked state, PR or not: they're waiting on me. */
+  blocked: BlockedTicket[];
   polledAt: string | null;
   nextPollAt: string | null;
   polling: boolean;
@@ -319,4 +330,42 @@ export function groupLane(items: QueueItem[]): ProjectGroup[] {
 }
 
 /** Count for the top-bar link: everything queued and assigned to me. */
-export const queueCount = (s: QueueState | null) => s?.items.filter((i) => i.via === "assigned").length ?? 0;
+/** The Queue nav pill: blocked tickets waiting on me. */
+export const blockedCount = (s: QueueState | null) => s?.blocked.length ?? 0;
+
+// ── Blocked alerts ──────────────────────────────────────────────────────────
+
+/** Seen-table prefix for "this ticket of mine is blocked" alerts. */
+export const BLOCKED_SEEN_PREFIX = "queue-blocked:";
+
+/** A started state whose name says blocked: the same test the Blocked lane uses. */
+export const isBlockedState = (state: { name: string; type: string }) => state.type === "started" && /block/i.test(state.name);
+
+const isMineBlocked = (i: LinearIssue) => !!i.assignee?.isMe && isBlockedState(i.state);
+
+/** Tickets assigned to me that are blocked now, PR or not, oldest first. */
+export function blockedOnMe(issues: LinearIssue[], openPrTickets: ReadonlySet<string>): BlockedTicket[] {
+  return issues
+    .filter(isMineBlocked)
+    .sort((a, b) => Date.parse(a.startedAt ?? a.createdAt) - Date.parse(b.startedAt ?? b.createdAt))
+    .map((i) => ({
+      id: i.id,
+      title: i.title,
+      url: i.url,
+      state: i.state.name,
+      hasPr: i.prs.some((p) => p.open) || openPrTickets.has(i.id),
+    }));
+}
+
+/**
+ * Tickets assigned to me that are blocked now, PR or not. `fresh` are the ones
+ * not alerted yet; `ids` is the full set to remember, so a ticket that leaves
+ * Blocked and comes back alerts again.
+ */
+export function blockedAlerts(issues: LinearIssue[], notified: ReadonlySet<string>): { fresh: LinearIssue[]; ids: string[] } {
+  const blocked = issues.filter(isMineBlocked);
+  return {
+    fresh: blocked.filter((i) => !notified.has(BLOCKED_SEEN_PREFIX + i.id)),
+    ids: blocked.map((i) => BLOCKED_SEEN_PREFIX + i.id),
+  };
+}

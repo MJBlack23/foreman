@@ -48,7 +48,7 @@ const ICONS: Record<Exclude<Route, "notifications">, ReactNode> = {
 };
 
 /** The page list, down the left side (a strip under the top bar on narrow screens). */
-export function SideNav({ route, nightShift, queued }: { route: Route; nightShift: Overall | null; queued: number | null }) {
+export function SideNav({ route, nightShift, blocked }: { route: Route; nightShift: Overall | null; blocked: number | null }) {
   const item = (to: Exclude<Route, "notifications">, label: string, extra?: ReactNode, title?: string) => (
     <RouteLink to={to} className={route === to ? "active" : ""} aria-current={route === to ? "page" : undefined} title={title}>
       {ICONS[to]}
@@ -59,7 +59,16 @@ export function SideNav({ route, nightShift, queued }: { route: Route; nightShif
   return (
     <nav className="sidenav" aria-label="Pages">
       {item("ideas", "Ideas")}
-      {item("queue", "Queue", queued ? <span className="nav-count">{queued}</span> : null, "Linear work with no PR yet")}
+      {item(
+        "queue",
+        "Queue",
+        blocked ? (
+          <span className="nav-count warn" aria-label={`${blocked} blocked, waiting on you`}>
+            {blocked}
+          </span>
+        ) : null,
+        blocked ? `${blocked} blocked ticket${blocked === 1 ? "" : "s"} waiting on you` : "Linear work with no PR yet",
+      )}
       {item("dashboard", "PRs")}
       {item("cluster", "Cluster")}
       {item(

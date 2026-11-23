@@ -727,6 +727,11 @@ button.tag:hover { color: var(--text); }
 .sidenav .ns-dot { margin-right: 4px; }
 .nav-count { font-size: 11px; font-weight: 600; min-width: 18px; padding: 0 6px; border-radius: 9px; background: var(--grey-bg); color: var(--muted); text-align: center; line-height: 18px; }
 .sidenav a.active .nav-count { background: var(--surface); color: var(--accent); }
+.nav-count.warn, .sidenav a.active .nav-count.warn { background: var(--amber-bg); color: var(--amber); }
+.blocked-banner ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.blocked-banner li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.blocked-banner a { color: inherit; font-weight: 600; }
+.blocked-banner .blocked-title { color: var(--text); }
 @media (max-width: 760px) {
   .shell { display: block; }
   .sidenav { top: 53px; z-index: 9; height: auto; flex-direction: row; padding: 6px 12px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }

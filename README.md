@@ -87,6 +87,8 @@ Within each lane, issues are grouped by project, then by parent issue, and sorte
 
 On each row, the copy icon copies Linear's branch name, so the PR links back to the ticket. "Send to Night-Shift" makes one Linear update that assigns the ticket to you, moves it to the team's To Do and adds the team's `night-shift-ready` label, and night-shift picks the ticket up on its next tick. Issues that already have the label show "With Night-Shift" instead.
 
+The Queue pill in the side nav counts tickets assigned to you that are blocked, PR or not, and a banner at the top of the Queue page lists them. When a ticket assigned to you moves into a Blocked state, Foreman sends a macOS notification that opens the ticket in Linear, whether or not it has a PR. It alerts once per trip into Blocked, so a ticket that leaves Blocked and comes back alerts again; after a restart, several blocked tickets collapse into one notification.
+
 It needs `LINEAR_API_KEY`, a personal Linear key, in Doppler project `foreman`. Read access is enough for the page; "Send to Night-Shift" also needs Write. Without it the page shows a "not set up" note.
 
 ## Data

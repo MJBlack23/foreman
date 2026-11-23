@@ -35,6 +35,9 @@ const queue = new QueueWatcher({
   apiKey: loadLinearKey(),
   prs: () => poller.snapshot().prs,
   branchesMatching: (terms) => gh.branchesMatching(terms),
+  seen: store,
+  notify: (n) => sendNotification(n, config.sound),
+  dashboardUrl,
 });
 // A new or closed PR moves issues in or out of the queue without waiting for Linear.
 poller.subscribe(() => queue.republish());

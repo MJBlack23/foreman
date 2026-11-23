@@ -7,7 +7,7 @@ import { IdeasPage } from "./IdeasPage.tsx";
 import { NightShiftPage } from "./NightShiftPage.tsx";
 import { NotificationsPage } from "./NotificationsPage.tsx";
 import { QueuePage } from "./QueuePage.tsx";
-import { queueCount } from "../../core/queue.ts";
+import { blockedCount } from "../../core/queue.ts";
 import { PrTabs } from "./PrList.tsx";
 import { RunsPanel } from "./RunsPanel.tsx";
 import { StatsBand } from "./StatsBand.tsx";
@@ -68,7 +68,7 @@ export function App() {
         route={route}
       />
       <div className="shell">
-        <SideNav route={route} nightShift={nightShift?.overall ?? null} queued={queue?.configured ? queueCount(queue) : null} />
+        <SideNav route={route} nightShift={nightShift?.overall ?? null} blocked={queue?.configured ? blockedCount(queue) : null} />
         <main>
         {snapshot?.lastError && route !== "cluster" && route !== "night-shift" && route !== "ideas" && route !== "queue" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
         {body}
