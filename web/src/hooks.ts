@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Idea } from "../../core/ideas.ts";
 import type { NightShiftState } from "../../core/nightShift.ts";
+import type { QueueState } from "../../core/queue.ts";
 import type { Snapshot } from "../../core/types.ts";
 
 /** Live state pushed by the server over SSE. EventSource reconnects on its own. */
@@ -8,22 +9,25 @@ export function useSnapshot(): {
   snapshot: Snapshot | null;
   nightShift: NightShiftState | null;
   ideas: Idea[] | null;
+  queue: QueueState | null;
   connected: boolean;
 } {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [nightShift, setNightShift] = useState<NightShiftState | null>(null);
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [queue, setQueue] = useState<QueueState | null>(null);
   const [connected, setConnected] = useState(false);
   useEffect(() => {
     const es = new EventSource("/api/events");
     es.addEventListener("snapshot", (e) => setSnapshot(JSON.parse((e as MessageEvent).data)));
     es.addEventListener("nightshift", (e) => setNightShift(JSON.parse((e as MessageEvent).data)));
     es.addEventListener("ideas", (e) => setIdeas(JSON.parse((e as MessageEvent).data)));
+    es.addEventListener("queue", (e) => setQueue(JSON.parse((e as MessageEvent).data)));
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     return () => es.close();
   }, []);
-  return { snapshot, nightShift, ideas, connected };
+  return { snapshot, nightShift, ideas, queue, connected };
 }
 
 /** Re-render every `ms` so elapsed / time-left tick between polls. */

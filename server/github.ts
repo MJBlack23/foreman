@@ -111,6 +111,37 @@ export class GitHub {
     return out;
   }
 
+  /**
+   * Branches whose names contain each search term (case-insensitive substring),
+   * in one GraphQL call. Callers filter the loose matches.
+   */
+  async branchesMatching(terms: string[]): Promise<Map<string, { name: string; url: string; committedAt: string | null }[]>> {
+    const out = new Map<string, { name: string; url: string; committedAt: string | null }[]>();
+    if (!terms.length) return out;
+    const fields = terms
+      .map((_, i) => `b${i}: refs(refPrefix: "refs/heads/", query: $t${i}, first: 10) { nodes { name target { ... on Commit { committedDate } } } }`)
+      .join("\n");
+    const vars = terms.map((_, i) => `$t${i}: String!`).join(", ");
+    const query = `query(${vars}) { repository(owner: "${REPO_OWNER}", name: "${REPO_NAME}") { ${fields} } }`;
+    type Refs = { nodes: { name: string; target: { committedDate?: string } | null }[] };
+    const res = await this.octokit.graphql<{ repository: Record<string, Refs> }>(
+      query,
+      Object.fromEntries(terms.map((t, i) => [`t${i}`, t])),
+    );
+    terms.forEach((t, i) => {
+      const nodes = res.repository[`b${i}`]?.nodes ?? [];
+      out.set(
+        t,
+        nodes.map((n) => ({
+          name: n.name,
+          url: `https://github.com/${REPO_OWNER}/${REPO_NAME}/tree/${n.name.split("/").map(encodeURIComponent).join("/")}`,
+          committedAt: n.target?.committedDate ?? null,
+        })),
+      );
+    });
+    return out;
+  }
+
   async workflowRuns(): Promise<GhRun[]> {
     const res = await this.get<{ workflow_runs: RawRun[] }>(
       "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs",

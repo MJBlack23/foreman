@@ -70,6 +70,25 @@ Claude reads and writes the same ideas through `/api/ideas` with curl; the [idea
 
 Writes from a browser are only accepted from the dashboard's own origin; local clients that send no `Origin` (curl) are allowed. Every write must be `content-type: application/json`.
 
+## Queue page
+
+`/queue` lists the Linear work I've queued that has no open PR yet. Linear is the source of truth, and the page only reads from it. Every 3 minutes, and on "Refresh", it fetches the issues that are started or to do (not backlog or triage), either assigned to me or in a project I lead. Delegated issues show up as mine.
+
+An issue drops off the page once a PR for it is open, either one Linear has linked or one the PRs tab already knows about. Merged or closed PRs don't count, so multi-PR work stays on the page with an "earlier PRs merged" note.
+
+Issues are sorted into lanes:
+
+- **Branch pushed, no PR:** a branch on `CloudSpot/cloudspot` names the issue (found with one GitHub GraphQL call).
+- **In progress:** marked Stale after 3 days with nothing pushed.
+- **Blocked**
+- **Up next**
+
+Within each lane, issues are grouped by project, then by parent issue, and sorted by priority. Parents can be folded; what you've folded is remembered in this browser.
+
+On each row, the copy icon copies Linear's branch name, so the PR links back to the ticket. "Send to Night-Shift" adds the team's `night-shift-ready` label in Linear, moving a Blocked ticket to the team's To Do first, after a macOS confirm (`ARGO_NATIVE_CONFIRM=0` turns it off), and night-shift picks the ticket up on its next tick. Issues that already have the label show "With Night-Shift" instead.
+
+It needs `LINEAR_API_KEY`, a personal Linear key, in Doppler project `foreman`. Read access is enough for the page; "Send to Night-Shift" also needs Write. Without it the page shows a "not set up" note.
+
 ## Data
 
 Everything the app remembers is in `foreman.db`, a SQLite database in the project root (git-ignored). `FOREMAN_DB` points it somewhere else. It uses Node's built-in `node:sqlite`, so there's nothing native to install.

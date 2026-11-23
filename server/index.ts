@@ -14,6 +14,7 @@ import { sendNotification } from "./notify.ts";
 import { loadNightShiftConfig, NightShiftStore, NightShiftWatcher, nightShiftRoutes } from "./nightShift.ts";
 import { Poller } from "./poller.ts";
 import { PrefsStore } from "./prefs.ts";
+import { loadLinearKey, QueueWatcher, queueRoutes } from "./queue.ts";
 import { SeenStore } from "./store.ts";
 
 const db = openDb();
@@ -30,6 +31,14 @@ const argoConfig = loadArgoConfig(config.dataDir);
 const origins = dashboardOrigins(config.port, [Number(process.env.VITE_PORT ?? 5173)]);
 const nativeConfirm = process.env.ARGO_NATIVE_CONFIRM === "0" ? undefined : macConfirm;
 const ideas = new IdeasStore(db);
+const queue = new QueueWatcher({
+  apiKey: loadLinearKey(),
+  prs: () => poller.snapshot().prs,
+  branchesMatching: (terms) => gh.branchesMatching(terms),
+  confirm: nativeConfirm,
+});
+// A new or closed PR moves issues in or out of the queue without waiting for Linear.
+poller.subscribe(() => queue.republish());
 const nightShift = new NightShiftWatcher({
   config: loadNightShiftConfig(),
   store: new NightShiftStore(db),
@@ -66,6 +75,7 @@ app.get("/api/events", (c) =>
     await stream.writeSSE({ event: "snapshot", data: JSON.stringify(poller.snapshot()) });
     await stream.writeSSE({ event: "nightshift", data: JSON.stringify(nightShift.state()) });
     await stream.writeSSE({ event: "ideas", data: JSON.stringify(ideas.list()) });
+    await stream.writeSSE({ event: "queue", data: JSON.stringify(queue.state()) });
     const unsubscribe = poller.subscribe((s) => {
       stream.writeSSE({ event: "snapshot", data: JSON.stringify(s) }).catch(() => {});
     });
@@ -75,6 +85,9 @@ app.get("/api/events", (c) =>
     const unsubscribeIdeas = ideas.subscribe((list) => {
       stream.writeSSE({ event: "ideas", data: JSON.stringify(list) }).catch(() => {});
     });
+    const unsubscribeQueue = queue.subscribe((q) => {
+      stream.writeSSE({ event: "queue", data: JSON.stringify(q) }).catch(() => {});
+    });
     const heartbeat = setInterval(() => {
       stream.writeSSE({ event: "ping", data: "" }).catch(() => {});
     }, 25_000);
@@ -83,6 +96,7 @@ app.get("/api/events", (c) =>
         unsubscribe();
         unsubscribeNs();
         unsubscribeIdeas();
+        unsubscribeQueue();
         clearInterval(heartbeat);
         resolve();
       });
@@ -123,6 +137,7 @@ app.post("/api/viewed", async (c) => {
 clusterRoutes(app, cluster);
 nightShiftRoutes(app, nightShift, origins);
 ideaRoutes(app, ideas, origins);
+queueRoutes(app, queue, origins);
 
 // The page polls this and reloads itself when `vite build --watch` writes a new build.
 app.get("/api/build", (c) => {
@@ -148,14 +163,17 @@ serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, () => {
     console.log(`[argo:${e.id}] ${e.configured ? `using ${e.host}` : `not configured (missing ${e.missing.join(", ")})`}`);
   const ns = nightShift.missing();
   console.log(`[night-shift] watching ${nightShift.state().url}${ns.length ? ` (missing ${ns.join(", ")})` : ""}`);
+  console.log(`[queue] ${queue.configured ? "watching Linear" : "not configured (missing LINEAR_API_KEY)"}`);
   poller.start();
   nightShift.start();
+  queue.start();
 });
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
     poller.stop();
     nightShift.stop();
+    queue.stop();
     db.close();
     process.exit(0);
   });

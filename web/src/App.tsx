@@ -6,14 +6,17 @@ import { useBuildReload, useNow, useSnapshot } from "./hooks.ts";
 import { IdeasPage } from "./IdeasPage.tsx";
 import { NightShiftPage } from "./NightShiftPage.tsx";
 import { NotificationsPage } from "./NotificationsPage.tsx";
+import { QueuePage } from "./QueuePage.tsx";
+import { queueCount } from "../../core/queue.ts";
 import { PrTabs } from "./PrList.tsx";
 import { RunsPanel } from "./RunsPanel.tsx";
 import { StatsBand } from "./StatsBand.tsx";
 import { useRoute } from "./router.tsx";
+import { SideNav } from "./SideNav.tsx";
 import { TopBar } from "./TopBar.tsx";
 
 export function App() {
-  const { snapshot, nightShift, ideas, connected } = useSnapshot();
+  const { snapshot, nightShift, ideas, queue, connected } = useSnapshot();
   const route = useRoute();
   const now = useNow();
   useBuildReload();
@@ -25,6 +28,8 @@ export function App() {
     body = <NightShiftPage state={nightShift} connected={connected} now={now} />;
   } else if (route === "ideas") {
     body = <IdeasPage ideas={ideas} connected={connected} now={now} />;
+  } else if (route === "queue") {
+    body = <QueuePage state={queue} connected={connected} now={now} />;
   } else if (snapshot && snapshot.schema !== SNAPSHOT_SCHEMA) {
     body = (
       <div className="banner">
@@ -51,7 +56,7 @@ export function App() {
 
   const activeRuns = snapshot?.prs.filter((p) => p.run && isRunActive(p.run)).length ?? 0;
   useEffect(() => {
-    if (route === "cluster" || route === "night-shift" || route === "ideas") return;
+    if (route === "cluster" || route === "night-shift" || route === "ideas" || route === "queue") return;
     document.title = activeRuns ? `(${activeRuns} building) Foreman` : "Foreman";
   }, [activeRuns, route]);
 
@@ -59,14 +64,16 @@ export function App() {
     <>
       <TopBar
         snapshot={snapshot?.schema === SNAPSHOT_SCHEMA ? snapshot : null}
-        nightShift={nightShift?.overall ?? null}
         connected={connected}
         route={route}
       />
-      <main>
-        {snapshot?.lastError && route !== "cluster" && route !== "night-shift" && route !== "ideas" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
+      <div className="shell">
+        <SideNav route={route} nightShift={nightShift?.overall ?? null} queued={queue?.configured ? queueCount(queue) : null} />
+        <main>
+        {snapshot?.lastError && route !== "cluster" && route !== "night-shift" && route !== "ideas" && route !== "queue" && <div className="banner">GitHub poll failed: {snapshot.lastError}</div>}
         {body}
-      </main>
+        </main>
+      </div>
     </>
   );
 }
