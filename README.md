@@ -64,7 +64,9 @@ The health check needs neither.
 
 ## Ideas page
 
-`/ideas` is a board for things I want to do someday but haven't planned or put in Linear: not a todo list. Each idea has a title, a pitch, a markdown "thinking so far", a stage (Spark, Shaping, Waiting on something, Ready for the line, On the line, Shelved), what it's waiting on, tags, a link once it's in Linear, and a thread of notes from me or Claude.
+`/ideas` is a board for things I want to do someday but haven't planned or put in Linear: not a todo list. Each idea has a title, a pitch, a markdown "thinking so far", a stage (Spark, Shaping, Waiting on something, Ready for the line, Active project, On the line, Shelved), what it's waiting on, tags, a link once it's in Linear, and a thread of notes from me or Claude.
+
+Under the board, **Active projects** lists the big things I'm working on in parallel with everything else (stage `active`), in the order they were added, with what each is waiting on. They open in the same drawer as ideas, so they keep notes and "Talk to Claude".
 
 Claude reads and writes the same ideas through `/api/ideas` with curl; the [idea-board skill](.claude/skills/idea-board/SKILL.md) says how. "Talk to Claude" on an idea copies a `/grill-me` prompt to paste into any Claude Code session. Changes show up on the page live.
 

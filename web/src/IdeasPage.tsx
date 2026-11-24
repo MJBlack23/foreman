@@ -41,6 +41,8 @@ export function IdeasPage({ ideas, connected, now }: { ideas: Idea[] | null; con
   const select = (id: number | null) => navigate("ideas", { id: id ? String(id) : null });
   const fail = (what: string) => (e: unknown) => toasts.push(`${what}: ${(e as Error).message}`, "bad");
 
+  // In the order they were added, so the list doesn't reshuffle on every edit.
+  const active = shown.filter((i) => i.stage === "active").sort((a, b) => a.id - b.id);
   const offBoard = (["line", "shelved"] as Stage[]).map((s) => ({ stage: s, items: shown.filter((i) => i.stage === s) }));
 
   return (
@@ -85,6 +87,51 @@ export function IdeasPage({ ideas, connected, now }: { ideas: Idea[] | null; con
           );
         })}
       </div>
+
+      <section className="idea-active" aria-labelledby="idea-active-head">
+        <header>
+          <h2 id="idea-active-head" className="section-label">
+            Active projects
+          </h2>
+          <span className="muted small">
+            {active.length} · {STAGE_HINT.active}
+          </span>
+        </header>
+        {active.length > 0 && (
+          <ul>
+            {active.map((i) => (
+              <li key={i.id} className={i.id === openId ? "active" : undefined}>
+                <button className="linkish idea-active-title" onClick={() => select(i.id)}>
+                  {i.title}
+                </button>
+                {i.waitingOn && <span className="idea-waiting">Waiting on: {i.waitingOn}</span>}
+                {i.pitch && <span className="muted small idea-active-pitch">{i.pitch}</span>}
+                <span className="idea-active-meta">
+                  {i.tags.map((t) => (
+                    <span key={t} className="tag">
+                      {t}
+                    </span>
+                  ))}
+                  {i.link && (
+                    <Ext href={i.link} className="small">
+                      {linkLabel(i.link)}
+                    </Ext>
+                  )}
+                  <span className="muted small">
+                    {i.notes.length > 0 && `${i.notes.length} note${i.notes.length === 1 ? "" : "s"} · `}
+                    {formatAgo(i.updatedAt, now)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <QuickCapture
+          placeholder="Add an active project…"
+          label="New active project"
+          onCreate={(title) => api<Idea>("POST", "/api/ideas", { title, stage: "active" }).then(() => undefined, fail("Couldn’t add it"))}
+        />
+      </section>
 
       {offBoard.map(
         ({ stage, items }) =>
@@ -145,7 +192,15 @@ export function IdeasPage({ ideas, connected, now }: { ideas: Idea[] | null; con
 
 const linkLabel = (url: string) => (/linear\.app/.test(url) ? "Linear" : url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]);
 
-function QuickCapture({ onCreate }: { onCreate: (title: string) => Promise<unknown> }) {
+function QuickCapture({
+  onCreate,
+  placeholder = "Capture an idea…",
+  label = "New idea",
+}: {
+  onCreate: (title: string) => Promise<unknown>;
+  placeholder?: string;
+  label?: string;
+}) {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent) => {
@@ -158,7 +213,7 @@ function QuickCapture({ onCreate }: { onCreate: (title: string) => Promise<unkno
   };
   return (
     <form className="idea-capture" onSubmit={submit}>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Capture an idea…" aria-label="New idea" maxLength={200} />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={placeholder} aria-label={label} maxLength={200} />
       <button className="button primary" disabled={busy || !title.trim()}>
         Add
       </button>

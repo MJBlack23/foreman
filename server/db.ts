@@ -93,6 +93,39 @@ const MIGRATIONS: string[] = [
     );
     CREATE INDEX idea_notes_idea ON idea_notes (idea_id, at);
   `,
+  /* 4 */ `
+    -- Ideas gain an 'active' stage: big projects in progress, listed under the board.
+    -- SQLite can't alter a CHECK, so rebuild both tables. The new notes table points at
+    -- ideas_new, and renaming ideas_new to ideas carries that reference along, so no
+    -- drop ever leaves a foreign key pointing at a missing table.
+    CREATE TABLE ideas_new (
+      id         INTEGER PRIMARY KEY,
+      title      TEXT NOT NULL,
+      pitch      TEXT NOT NULL DEFAULT '',
+      body       TEXT NOT NULL DEFAULT '',  -- markdown
+      stage      TEXT NOT NULL DEFAULT 'spark'
+                 CHECK (stage IN ('spark', 'shaping', 'waiting', 'ready', 'active', 'line', 'shelved')),
+      waiting_on TEXT NOT NULL DEFAULT '',
+      tags       TEXT NOT NULL DEFAULT '[]',  -- JSON array
+      link       TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE idea_notes_new (
+      id      INTEGER PRIMARY KEY,
+      idea_id INTEGER NOT NULL REFERENCES ideas_new (id),
+      author  TEXT NOT NULL CHECK (author IN ('matt', 'claude')),
+      body    TEXT NOT NULL,
+      at      TEXT NOT NULL
+    );
+    INSERT INTO ideas_new SELECT id, title, pitch, body, stage, waiting_on, tags, link, created_at, updated_at FROM ideas;
+    INSERT INTO idea_notes_new SELECT id, idea_id, author, body, at FROM idea_notes;
+    DROP TABLE idea_notes;
+    DROP TABLE ideas;
+    ALTER TABLE ideas_new RENAME TO ideas;
+    ALTER TABLE idea_notes_new RENAME TO idea_notes;
+    CREATE INDEX idea_notes_idea ON idea_notes (idea_id, at);
+  `,
 ];
 
 /** node:sqlite warns that it's experimental on first load; that's noise for a local tool. */

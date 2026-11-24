@@ -2,9 +2,10 @@
 
 /**
  * Where an idea sits. Not a workflow: an idea can move in any direction, and most never leave "spark".
- * "line" means it has become real work (a Linear issue or project); "shelved" means not doing it.
+ * "active" is a big project in progress alongside other work; "line" means it has become real work
+ * (a Linear issue or project); "shelved" means not doing it.
  */
-export const STAGES = ["spark", "shaping", "waiting", "ready", "line", "shelved"] as const;
+export const STAGES = ["spark", "shaping", "waiting", "ready", "active", "line", "shelved"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export const STAGE_LABEL: Record<Stage, string> = {
@@ -12,6 +13,7 @@ export const STAGE_LABEL: Record<Stage, string> = {
   shaping: "Shaping",
   waiting: "Waiting on something",
   ready: "Ready for the line",
+  active: "Active project",
   line: "On the line",
   shelved: "Shelved",
 };
@@ -21,11 +23,12 @@ export const STAGE_HINT: Record<Stage, string> = {
   shaping: "Being thought through: how it could work, what it needs.",
   waiting: "Blocked on other work landing first.",
   ready: "Clear enough to become a Linear project or issue.",
+  active: "A big thing you're working on in parallel with everything else.",
   line: "Now tracked in Linear.",
   shelved: "Decided not to do it, for now.",
 };
 
-/** Columns on the board; "line" and "shelved" sit in a collapsed list below. */
+/** Columns on the board; "active" is listed under it, and "line" and "shelved" sit in collapsed lists below that. */
 export const BOARD_STAGES: Stage[] = ["spark", "shaping", "waiting", "ready"];
 
 export type Author = "matt" | "claude";

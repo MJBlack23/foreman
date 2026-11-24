@@ -16,8 +16,8 @@ Foreman runs locally on `http://localhost:7896`. If `curl` can't connect, tell M
 | `title` | Short name. |
 | `pitch` | One or two sentences: what and why. Shown on the card. |
 | `body` | Markdown: the thinking so far. Keep it a current, tidy picture (approach, open questions, dependencies, risks), not a log. Use `##` headings and `-` lists. |
-| `stage` | `spark` (just captured) · `shaping` (being thought through) · `waiting` (blocked on other work) · `ready` (clear enough for Linear) · `line` (now in Linear) · `shelved` (not doing it). |
-| `waitingOn` | What has to happen first, e.g. "the email rewrite". Set it with stage `waiting`. |
+| `stage` | `spark` (just captured) · `shaping` (being thought through) · `waiting` (blocked on other work) · `ready` (clear enough for Linear) · `active` (a big project Matt is working on in parallel with other work; listed under the board, and `waitingOn` says what it's waiting for) · `line` (now in Linear) · `shelved` (not doing it). |
+| `waitingOn` | What has to happen first, e.g. "the email rewrite". Set it with stage `waiting`, or on an `active` project that's stuck. |
 | `tags` | Lowercase words, e.g. `["email", "claude"]`. |
 | `link` | The Linear URL once it's on the line. |
 | `notes` | A thread. Add a note (author `claude`) for each conversation: what was discussed, what changed, what's still open. |

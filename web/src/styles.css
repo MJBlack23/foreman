@@ -651,6 +651,15 @@ button.tag:hover { color: var(--text); }
 .idea-when { margin-left: auto; white-space: nowrap; }
 .claude-mark { color: var(--claude); }
 
+.idea-active { margin: 16px 0 12px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.idea-active header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.idea-active h2 { margin: 0; }
+.idea-active ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.idea-active li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 6px 8px; border-radius: 6px; }
+.idea-active li.active { background: var(--surface-2); }
+.idea-active-title { font-weight: 600; }
+.idea-active-meta { display: inline-flex; gap: 6px; align-items: baseline; margin-left: auto; }
+.idea-active .idea-capture { max-width: 420px; }
 .idea-off { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
 .idea-off summary { cursor: pointer; }
 .idea-off ul { list-style: none; margin: 8px 0 2px; padding: 0; display: grid; gap: 4px; }
